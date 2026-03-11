@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ふたり家計簿</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#1f2937;
+      --sub:#6b7280;
+      --line:#e5e7eb;
+      --accent:#2563eb;
+      --accent2:#10b981;
+      --danger:#ef4444;
+      --male:#3b82f6;
+      --female:#ec4899;
+      --common:#8b5cf6;
+    }
+    body.dark{
+      --bg:#0f172a;
+      --card:#111827;
+      --text:#f3f4f6;
+      --sub:#9ca3af;
+      --line:#374151;
+      --accent:#60a5fa;
+      --accent2:#34d399;
+      --danger:#f87171;
+      --male:#60a5fa;
+      --female:#f472b6;
+      --common:#a78bfa;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:16px;
+    }
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:16px;
+      flex-wrap:wrap;
+    }
+    .title{
+      font-size:24px;
+      font-weight:700;
+    }
+    .row{
+      display:grid;
+      grid-template-columns:repeat(12,1fr);
+      gap:16px;
+    }
+    .card{
+      grid-column:span 12;
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:0 4px 14px rgba(0,0,0,.05);
+    }
+    .card h2{
+      margin:0 0 12px;
+      font-size:18px;
+    }
+    .grid-2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .grid-3{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+    }
+    .grid-4{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+    }
+    label{
+      display:block;
+      font-size:13px;
+      color:var(--sub);
+      margin-bottom:6px;
+    }
+    input, select, button, textarea{
+      width:100%;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:var(--card);
+      color:var(--text);
+      font-size:14px;
+    }
+    textarea{min-height:80px; resize:vertical}
+    button{
+      cursor:pointer;
+      font-weight:700;
+    }
+    .btn-primary{
+      background:var(--accent);
+      color:white;
+      border:none;
+    }
+    .btn-sub{
+      background:transparent;
+    }
+    .btn-danger{
+      background:var(--danger);
+      color:white;
+      border:none;
+    }
+    .summary{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+    }
+    .metric{
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+    }
+    .metric .label{
+      color:var(--sub);
+      font-size:13px;
+      margin-bottom:8px;
+    }
+    .metric .value{
+      font-size:22px;
+      font-weight:800;
+    }
+    .tag{
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      color:white;
+    }
+    .tag-common{background:var(--common)}
+    .tag-male{background:var(--male)}
+    .tag-female{background:var(--female)}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+    th,td{
+      padding:10px 8px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      vertical-align:top;
+    }
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .small{
+      width:auto;
+      padding:8px 12px;
+      font-size:13px;
+    }
+    .muted{color:var(--sub)}
+    .right{text-align:right}
+    .chartbar{
+      height:14px;
+      background:var(--line);
+      border-radius:999px;
+      overflow:hidden;
+      margin-top:6px;
+    }
+    .chartfill{
+      height:100%;
+      border-radius:999px;
+    }
+    .section-space{margin-top:16px}
+    @media (max-width: 820px){
+      .grid-2,.grid-3,.grid-4,.summary{grid-template-columns:1fr}
+      .title{font-size:20px}
+      table{font-size:13px}
+      .hide-mobile{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">ふたり家計簿</div>
+      <div class="actions">
+        <button class="small btn-sub" id="themeBtn">🌙 ダークモード切替</button>
+        <button class="small btn-sub" id="exportBtn">CSV書き出し</button>
+        <button class="small btn-danger" id="resetBtn">全データ削除</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2>表示月</h2>
+        <div class="grid-4">
+          <div>
+            <label>月を選択</label>
+            <input type="month" id="monthPicker" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>月初設定</h2>
+        <div class="grid-4">
+          <div>
+            <label>男の給料</label>
+            <input type="number" id="maleSalary" placeholder="例 300000" />
+          </div>
+          <div>
+            <label>女の給料</label>
+            <input type="number" id="femaleSalary" placeholder="例 250000" />
+          </div>
+          <div>
+            <label>男の共通振込額</label>
+            <input type="number" id="maleTransfer" placeholder="例 80000" />
+          </div>
+          <div>
+            <label>女の共通振込額</label>
+            <input type="number" id="femaleTransfer" placeholder="例 50000" />
+          </div>
+        </div>
+        <div class="section-space">
+          <button class="btn-primary" id="saveMonthlyBtn">月初設定を保存</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>今月サマリー</h2>
+        <div class="summary" id="summaryArea"></div>
+      </div>
+
+      <div class="card">
+        <h2>支出入力</h2>
+        <div class="grid-4">
+          <div>
+            <label>日付</label>
+            <input type="date" id="date" />
+          </div>
+          <div>
+            <label>金額</label>
+            <input type="number" id="amount" placeholder="例 1200" />
+          </div>
+          <div>
+            <label>支出区分</label>
+            <select id="owner">
+              <option value="common">共通</option>
+              <option value="male">男</option>
+              <option value="female">女</option>
+            </select>
+          </div>
+          <div>
+            <label>カテゴリ</label>
+            <select id="category"></select>
+          </div>
+        </div>
+        <div class="grid-2 section-space">
+          <div>
+            <label>メモ</label>
+            <input type="text" id="memo" placeholder="例 スーパー、ガソリン" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn-primary" id="saveTxBtn">支出を保存</button>
+          </div>
+        </div>
+        <div class="muted section-space" id="editState"></div>
+      </div>
+
+      <div class="card">
+        <h2>カテゴリ管理</h2>
+        <div class="grid-3">
+          <div>
+            <label>新しいカテゴリ名</label>
+            <input type="text" id="newCategory" placeholder="例 医療費" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn-primary" id="addCategoryBtn">カテゴリ追加</button>
+          </div>
+          <div></div>
+        </div>
+        <div class="section-space" id="categoryList"></div>
+      </div>
+
+      <div class="card">
+        <h2>支出グラフ分析</h2>
+        <div id="chartArea"></div>
+      </div>
+
+      <div class="card">
+        <h2>支出一覧</h2>
+        <div class="grid-4">
+          <div>
+            <label>絞り込み</label>
+            <select id="filterOwner">
+              <option value="">すべて</option>
+              <option value="common">共通</option>
+              <option value="male">男</option>
+              <option value="female">女</option>
+            </select>
+          </div>
+          <div>
+            <label>カテゴリ</label>
+            <select id="filterCategory">
+              <option value="">すべて</option>
+            </select>
+          </div>
+          <div>
+            <label>検索</label>
+            <input type="text" id="searchText" placeholder="メモ検索" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn-sub" id="clearFilterBtn">絞り込み解除</button>
+          </div>
+        </div>
+        <div class="section-space" style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>区分</th>
+                <th>カテゴリ</th>
+                <th>メモ</th>
+                <th class="right">金額</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="txTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_CATEGORIES = ["食費","日用品","交通費","娯楽","通信費","水道光熱費","家賃","医療費","交際費","その他"];
+    const STORAGE_KEY = "kakeibo_app_v1";
+
+    const state = loadState();
+    let editingId = null;
+
+    const els = {
+      monthPicker: document.getElementById("monthPicker"),
+      maleSalary: document.getElementById("maleSalary"),
+      femaleSalary: document.getElementById("femaleSalary"),
+      maleTransfer: document.getElementById("maleTransfer"),
+      femaleTransfer: document.getElementById("femaleTransfer"),
+      saveMonthlyBtn: document.getElementById("saveMonthlyBtn"),
+      date: document.getElementById("date"),
+      amount: document.getElementById("amount"),
+      owner: document.getElementById("owner"),
+      category: document.getElementById("category"),
+      memo: document.getElementById("memo"),
+      saveTxBtn: document.getElementById("saveTxBtn"),
+      txTable: document.getElementById("txTable"),
+      summaryArea: document.getElementById("summaryArea"),
+      filterOwner: document.getElementById("filterOwner"),
+      filterCategory: document.getElementById("filterCategory"),
+      searchText: document.getElementById("searchText"),
+      clearFilterBtn: document.getElementById("clearFilterBtn"),
+      addCategoryBtn: document.getElementById("addCategoryBtn"),
+      newCategory: document.getElementById("newCategory"),
+      categoryList: document.getElementById("categoryList"),
+      chartArea: document.getElementById("chartArea"),
+      exportBtn: document.getElementById("exportBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      themeBtn: document.getElementById("themeBtn"),
+      editState: document.getElementById("editState")
+    };
+
+    init();
+
+    function init(){
+      const now = new Date();
+      const month = state.currentMonth || now.toISOString().slice(0,7);
+      state.currentMonth = month;
+      els.monthPicker.value = month;
+      els.date.value = new Date().toISOString().slice(0,10);
+
+      applyTheme();
+      renderCategoryOptions();
+      renderFilterCategoryOptions();
+      loadMonthlyInputs();
+      renderAll();
+
+      els.monthPicker.addEventListener("change", () => {
+        state.currentMonth = els.monthPicker.value;
+        saveState();
+        loadMonthlyInputs();
+        renderAll();
+      });
+
+      els.saveMonthlyBtn.addEventListener("click", saveMonthlyData);
+      els.saveTxBtn.addEventListener("click", saveTransaction);
+      els.filterOwner.addEventListener("change", renderTransactions);
+      els.filterCategory.addEventListener("change", renderTransactions);
+      els.searchText.addEventListener("input", renderTransactions);
+      els.clearFilterBtn.addEventListener("click", () => {
+        els.filterOwner.value = "";
+        els.filterCategory.value = "";
+        els.searchText.value = "";
+        renderTransactions();
+      });
+      els.addCategoryBtn.addEventListener("click", addCategory);
+      els.exportBtn.addEventListener("click", exportCSV);
+      els.resetBtn.addEventListener("click", resetAll);
+      els.themeBtn.addEventListener("click", toggleTheme);
+    }
+
+    function loadState(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try{
+          const parsed = JSON.parse(raw);
+          parsed.categories = parsed.categories?.length ? parsed.categories : [...DEFAULT_CATEGORIES];
+          parsed.monthly = parsed.monthly || {};
+          parsed.transactions = parsed.transactions || [];
+          parsed.theme = parsed.theme || "light";
+          return parsed;
+        }catch(e){}
+      }
+      return {
+        currentMonth: "",
+        categories: [...DEFAULT_CATEGORIES],
+        monthly: {},
+        transactions: [],
+        theme: "light"
+      };
+    }
+
+    function saveState(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function getMonthData(month){
+      if(!state.monthly[month]){
+        state.monthly[month] = {
+          maleSalary: 0,
+          femaleSalary: 0,
+          maleTransfer: 0,
+          femaleTransfer: 0
+        };
+      }
+      return state.monthly[month];
+    }
+
+    function loadMonthlyInputs(){
+      const m = getMonthData(state.currentMonth);
+      els.maleSalary.value = m.maleSalary || "";
+      els.femaleSalary.value = m.femaleSalary || "";
+      els.maleTransfer.value = m.maleTransfer || "";
+      els.femaleTransfer.value = m.femaleTransfer || "";
+    }
+
+    function saveMonthlyData(){
+      const m = getMonthData(state.currentMonth);
+      m.maleSalary = Number(els.maleSalary.value || 0);
+      m.femaleSalary = Number(els.femaleSalary.value || 0);
+      m.maleTransfer = Number(els.maleTransfer.value || 0);
+      m.femaleTransfer = Number(els.femaleTransfer.value || 0);
+      saveState();
+      renderSummary();
+      alert("月初設定を保存しました");
+    }
+
+    function renderCategoryOptions(){
+      els.category.innerHTML = "";
+      state.categories.forEach(cat => {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        opt.textContent = cat;
+        els.category.appendChild(opt);
+      });
+
+      els.categoryList.innerHTML = state.categories.map(cat => `
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line);padding:10px 12px;border-radius:12px;margin-bottom:8px;">
+          <div>${escapeHtml(cat)}</div>
+          <div class="actions">
+            <button class="small btn-sub" onclick="renameCategory('${escapeJs(cat)}')">名前変更</button>
+            <button class="small btn-danger" onclick="deleteCategory('${escapeJs(cat)}')">削除</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderFilterCategoryOptions(){
+      const current = els.filterCategory.value;
+      els.filterCategory.innerHTML = '<option value="">すべて</option>';
+      state.categories.forEach(cat => {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        opt.textContent = cat;
+        els.filterCategory.appendChild(opt);
+      });
+      if([...els.filterCategory.options].some(o => o.value === current)){
+        els.filterCategory.value = current;
+      }
+    }
+
+    function addCategory(){
+      const name = (els.newCategory.value || "").trim();
+      if(!name) return alert("カテゴリ名を入力してください");
+      if(state.categories.includes(name)) return alert("同じカテゴリがあります");
+      state.categories.push(name);
+      saveState();
+      els.newCategory.value = "";
+      renderCategoryOptions();
+      renderFilterCategoryOptions();
+    }
+
+    window.renameCategory = function(oldName){
+      const next = prompt("新しいカテゴリ名を入力してください", oldName);
+      if(!next) return;
+      const name = next.trim();
+      if(!name) return;
+      if(name !== oldName && state.categories.includes(name)) return alert("同じカテゴリがあります");
+
+      state.categories = state.categories.map(c => c === oldName ? name : c);
+      state.transactions.forEach(t => {
+        if(t.category === oldName) t.category = name;
+      });
+      saveState();
+      renderCategoryOptions();
+      renderFilterCategoryOptions();
+      renderAll();
+    }
+
+    window.deleteCategory = function(name){
+      const used = state.transactions.some(t => t.category === name);
+      if(used){
+        alert("このカテゴリは使用中なので削除できません");
+        return;
+      }
+      if(!confirm("カテゴリを削除しますか？")) return;
+      state.categories = state.categories.filter(c => c !== name);
+      saveState();
+      renderCategoryOptions();
+      renderFilterCategoryOptions();
+    }
+
+    function saveTransaction(){
+      const date = els.date.value;
+      const amount = Number(els.amount.value || 0);
+      const owner = els.owner.value;
+      const category = els.category.value;
+      const memo = (els.memo.value || "").trim();
+
+      if(!date) return alert("日付を入力してください");
+      if(!amount || amount <= 0) return alert("金額を正しく入力してください");
+      if(!category) return alert("カテゴリを選んでください");
+
+      const tx = {
+        id: editingId || crypto.randomUUID(),
+        date,
+        month: date.slice(0,7),
+        amount,
+        owner,
+        category,
+        memo
+      };
+
+      if(editingId){
+        const idx = state.transactions.findIndex(t => t.id === editingId);
+        state.transactions[idx] = tx;
+        editingId = null;
+        els.saveTxBtn.textContent = "支出を保存";
+        els.editState.textContent = "";
+      }else{
+        state.transactions.push(tx);
+      }
+
+      saveState();
+      clearForm();
+      renderAll();
+    }
+
+    function clearForm(){
+      els.amount.value = "";
+      els.memo.value = "";
+      els.owner.value = "common";
+      els.category.value = state.categories[0] || "";
+      els.date.value = new Date().toISOString().slice(0,10);
+    }
+
+    function getTransactionsForCurrentMonth(){
+      return state.transactions
+        .filter(t => t.month === state.currentMonth)
+        .sort((a,b) => b.date.localeCompare(a.date));
+    }
+
+    function renderAll(){
+      renderSummary();
+      renderTransactions();
+      renderCharts();
+    }
+
+    function renderSummary(){
+      const list = getTransactionsForCurrentMonth();
+      const monthData = getMonthData(state.currentMonth);
+
+      const commonExpense = sum(list.filter(t => t.owner === "common").map(t => t.amount));
+      const maleExpense = sum(list.filter(t => t.owner === "male").map(t => t.amount));
+      const femaleExpense = sum(list.filter(t => t.owner === "female").map(t => t.amount));
+      const totalTransfer = Number(monthData.maleTransfer || 0) + Number(monthData.femaleTransfer || 0);
+
+      const commonRemain = totalTransfer - commonExpense;
+      const maleRemain = Number(monthData.maleSalary || 0) - maleExpense;
+      const femaleRemain = Number(monthData.femaleSalary || 0) - femaleExpense;
+
+      const maleAdjusted = Number(monthData.maleSalary || 0) - maleExpense - commonExpense * 0.6;
+      const femaleAdjusted = Number(monthData.femaleSalary || 0) - femaleExpense - commonExpense * 0.4;
+
+      els.summaryArea.innerHTML = `
+        <div class="metric">
+          <div class="label">2人の振込額 - 共通支出</div>
+          <div class="value">${yen(commonRemain)}</div>
+        </div>
+        <div class="metric">
+          <div class="label">男の給料 - 男の支出合計</div>
+          <div class="value">${yen(maleRemain)}</div>
+        </div>
+        <div class="metric">
+          <div class="label">女の給料 - 女の支出合計</div>
+          <div class="value">${yen(femaleRemain)}</div>
+        </div>
+        <div class="metric">
+          <div class="label">共通支出合計</div>
+          <div class="value">${yen(commonExpense)}</div>
+        </div>
+        <div class="metric">
+          <div class="label">男の按分後残額（共通費60%反映）</div>
+          <div class="value">${yen(maleAdjusted)}</div>
+        </div>
+        <div class="metric">
+          <div class="label">女の按分後残額（共通費40%反映）</div>
+          <div class="value">${yen(femaleAdjusted)}</div>
+        </div>
+      `;
+    }
+
+    function renderTransactions(){
+      const list = getTransactionsForCurrentMonth()
+        .filter(t => !els.filterOwner.value || t.owner === els.filterOwner.value)
+        .filter(t => !els.filterCategory.value || t.category === els.filterCategory.value)
+        .filter(t => !els.searchText.value || (t.memo || "").toLowerCase().includes(els.searchText.value.toLowerCase()));
+
+      els.txTable.innerHTML = list.map(t => `
+        <tr>
+          <td>${escapeHtml(t.date)}</td>
+          <td>${ownerTag(t.owner)}</td>
+          <td>${escapeHtml(t.category)}</td>
+          <td>${escapeHtml(t.memo || "")}</td>
+          <td class="right">${yen(t.amount)}</td>
+          <td>
+            <div class="actions">
+              <button class="small btn-sub" onclick="editTx('${t.id}')">編集</button>
+              <button class="small btn-danger" onclick="deleteTx('${t.id}')">削除</button>
+            </div>
+          </td>
+        </tr>
+      `).join("") || `<tr><td colspan="6" class="muted">まだ支出がありません</td></tr>`;
+    }
+
+    window.editTx = function(id){
+      const t = state.transactions.find(x => x.id === id);
+      if(!t) return;
+      editingId = id;
+      els.date.value = t.date;
+      els.amount.value = t.amount;
+      els.owner.value = t.owner;
+      els.category.value = t.category;
+      els.memo.value = t.memo || "";
+      els.saveTxBtn.textContent = "編集を保存";
+      els.editState.textContent = "編集中です。内容を直して「編集を保存」を押してください。";
+      window.scrollTo({top: 0, behavior: "smooth"});
+    }
+
+    window.deleteTx = function(id){
+      if(!confirm("この支出を削除しますか？")) return;
+      state.transactions = state.transactions.filter(t => t.id !== id);
+      if(editingId === id){
+        editingId = null;
+        els.saveTxBtn.textContent = "支出を保存";
+        els.editState.textContent = "";
+        clearForm();
+      }
+      saveState();
+      renderAll();
+    }
+
+    function renderCharts(){
+      const list = getTransactionsForCurrentMonth();
+      const byOwner = {
+        common: sum(list.filter(t => t.owner === "common").map(t => t.amount)),
+        male: sum(list.filter(t => t.owner === "male").map(t => t.amount)),
+        female: sum(list.filter(t => t.owner === "female").map(t => t.amount))
+      };
+      const total = byOwner.common + byOwner.male + byOwner.female || 1;
+
+      const catMap = {};
+      list.forEach(t => catMap[t.category] = (catMap[t.category] || 0) + t.amount);
+      const catRows = Object.entries(catMap).sort((a,b) => b[1]-a[1]);
+
+      els.chartArea.innerHTML = `
+        <div class="grid-2">
+          <div>
+            <div style="font-weight:700;margin-bottom:10px;">共通 / 男 / 女 の比率</div>
+            ${barRow("共通", byOwner.common, total, "var(--common)")}
+            ${barRow("男", byOwner.male, total, "var(--male)")}
+            ${barRow("女", byOwner.female, total, "var(--female)")}
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:10px;">カテゴリ別支出</div>
+            ${catRows.length ? catRows.map(([name,val]) => barRow(name, val, sum(catRows.map(x=>x[1])) || 1, randomColor(name))).join("") : '<div class="muted">まだデータがありません</div>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function barRow(label, value, total, color){
+      const pct = Math.round((value / total) * 100);
+      return `
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;gap:8px;">
+            <div>${escapeHtml(label)}</div>
+            <div>${yen(value)} / ${pct}%</div>
+          </div>
+          <div class="chartbar">
+            <div class="chartfill" style="width:${pct}%;background:${color};"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function exportCSV(){
+      const rows = [
+        ["date","month","owner","category","memo","amount"],
+        ...state.transactions.map(t => [t.date,t.month,t.owner,t.category,t.memo || "",t.amount])
+      ];
+      const csv = rows.map(r => r.map(v => `"${String(v).replaceAll('"','""')}"`).join(",")).join("\\n");
+      const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "kakeibo.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function resetAll(){
+      if(!confirm("本当に全データを削除しますか？")) return;
+      if(!confirm("本当に本当に削除します。戻せません。")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+
+    function toggleTheme(){
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      saveState();
+      applyTheme();
+    }
+
+    function applyTheme(){
+      document.body.classList.toggle("dark", state.theme === "dark");
+    }
+
+    function ownerTag(owner){
+      if(owner === "common") return '<span class="tag tag-common">共通</span>';
+      if(owner === "male") return '<span class="tag tag-male">男</span>';
+      return '<span class="tag tag-female">女</span>';
+    }
+
+    function yen(n){
+      return new Intl.NumberFormat("ja-JP", {style:"currency", currency:"JPY", maximumFractionDigits:0}).format(Number(n || 0));
+    }
+
+    function sum(arr){
+      return arr.reduce((a,b) => a + Number(b || 0), 0);
+    }
+
+    function randomColor(text){
+      const colors = ["#10b981","#f59e0b","#8b5cf6","#3b82f6","#ef4444","#14b8a6","#ec4899"];
+      let code = 0;
+      for(let i=0;i<text.length;i++) code += text.charCodeAt(i);
+      return colors[code % colors.length];
+    }
+
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+    }
+
+    function escapeJs(str){
+      return String(str).replaceAll("\\","\\\\").replaceAll("'","\\'");
+    }
+  </script>
+</body>
+</html>
