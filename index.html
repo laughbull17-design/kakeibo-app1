@@ -185,6 +185,19 @@
       border-radius:999px;
     }
     .section-space{margin-top:16px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .tab-btn{width:auto;padding:8px 14px}
+    .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .pie-wrap{display:flex;gap:16px;flex-wrap:wrap}
+    .pie-card{flex:1;min-width:180px;border:1px solid var(--line);border-radius:12px;padding:12px}
+    .pie{width:120px;height:120px;border-radius:50%;margin:0 auto 10px;background:conic-gradient(var(--accent) 0 50%, var(--line) 50% 100%)}
+    .budget-result{font-weight:700}
+    .budget-result.over{color:var(--danger)}
+    .budget-result.under{color:var(--male)}
+    .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .cal-cell{border:1px solid var(--line);border-radius:8px;padding:8px;min-height:44px;font-size:12px}
+    .cal-head{font-weight:700;text-align:center;background:var(--bg)}
+    .cal-mark{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-left:4px}
     @media (max-width: 820px){
       .grid-2,.grid-3,.grid-4,.summary{grid-template-columns:1fr}
       .title{font-size:20px}
@@ -205,7 +218,13 @@
     </div>
 
     <div class="row">
-      <div class="card">
+      <div class="card" style="padding:12px;" data-page="all">
+        <div class="tabs">
+          <button class="btn-sub tab-btn active" data-tab="ledger" id="ledgerTab">家計簿</button>
+          <button class="btn-sub tab-btn" data-tab="analysis" id="analysisTab">分析</button>
+        </div>
+      </div>
+      <div class="card" data-page="ledger">
         <h2>表示月</h2>
         <div class="grid-4">
           <div>
@@ -215,7 +234,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>月初設定</h2>
         <div class="grid-4">
           <div>
@@ -235,17 +254,18 @@
             <input type="number" id="femaleTransfer" placeholder="例 50000" />
           </div>
         </div>
+        <div id="commonBudgetInputs" class="grid-3 section-space"></div>
         <div class="section-space">
           <button class="btn-primary" id="saveMonthlyBtn">月初設定を保存</button>
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>今月サマリー</h2>
         <div class="summary" id="summaryArea"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>支出入力</h2>
         <div class="grid-4">
           <div>
@@ -282,7 +302,7 @@
         <div class="muted section-space" id="editState"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>カテゴリ管理</h2>
         <div class="grid-3">
           <div>
@@ -298,12 +318,27 @@
         <div class="section-space" id="categoryList"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="analysis">
         <h2>支出グラフ分析</h2>
         <div id="chartArea"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="analysis">
+        <h2>共通費用 目標達成分析</h2>
+        <div id="budgetAnalysisArea"></div>
+      </div>
+
+      <div class="card" data-page="analysis">
+        <h2>収支円グラフ（男・女・共通）</h2>
+        <div id="pieArea" class="pie-wrap"></div>
+      </div>
+
+      <div class="card" data-page="analysis">
+        <h2>支出カレンダー</h2>
+        <div id="calendarArea"></div>
+      </div>
+
+      <div class="card" data-page="ledger">
         <h2>支出一覧</h2>
         <div class="grid-4">
           <div>
@@ -351,6 +386,7 @@
 
   <script>
     const DEFAULT_CATEGORIES = ["食費","日用品","交通費","娯楽","通信費","水道光熱費","家賃","医療費","交際費","その他"];
+    const COMMON_BUDGET_CATEGORIES = ["家賃","水道","電気","ガス","日用品","食費"];
     const STORAGE_KEY = "kakeibo_app_v1";
 
     const state = loadState();
@@ -363,6 +399,7 @@
       maleTransfer: document.getElementById("maleTransfer"),
       femaleTransfer: document.getElementById("femaleTransfer"),
       saveMonthlyBtn: document.getElementById("saveMonthlyBtn"),
+      commonBudgetInputs: document.getElementById("commonBudgetInputs"),
       date: document.getElementById("date"),
       amount: document.getElementById("amount"),
       owner: document.getElementById("owner"),
@@ -379,10 +416,15 @@
       newCategory: document.getElementById("newCategory"),
       categoryList: document.getElementById("categoryList"),
       chartArea: document.getElementById("chartArea"),
+      budgetAnalysisArea: document.getElementById("budgetAnalysisArea"),
+      pieArea: document.getElementById("pieArea"),
+      calendarArea: document.getElementById("calendarArea"),
       exportBtn: document.getElementById("exportBtn"),
       resetBtn: document.getElementById("resetBtn"),
       themeBtn: document.getElementById("themeBtn"),
-      editState: document.getElementById("editState")
+      editState: document.getElementById("editState"),
+      pageCards: [...document.querySelectorAll("[data-page]")],
+      tabButtons: [...document.querySelectorAll(".tab-btn")]
     };
 
     init();
@@ -397,8 +439,10 @@
       applyTheme();
       renderCategoryOptions();
       renderFilterCategoryOptions();
+      renderBudgetInputs();
       loadMonthlyInputs();
       renderAll();
+      setPage(state.currentPage || "ledger");
 
       els.monthPicker.addEventListener("change", () => {
         state.currentMonth = els.monthPicker.value;
@@ -422,6 +466,9 @@
       els.exportBtn.addEventListener("click", exportCSV);
       els.resetBtn.addEventListener("click", resetAll);
       els.themeBtn.addEventListener("click", toggleTheme);
+      els.tabButtons.forEach(btn => {
+        btn.addEventListener("click", () => setPage(btn.dataset.tab));
+      });
     }
 
     function loadState(){
@@ -433,6 +480,7 @@
           parsed.monthly = parsed.monthly || {};
           parsed.transactions = parsed.transactions || [];
           parsed.theme = parsed.theme || "light";
+          parsed.currentPage = parsed.currentPage || "ledger";
           return parsed;
         }catch(e){}
       }
@@ -441,7 +489,8 @@
         categories: [...DEFAULT_CATEGORIES],
         monthly: {},
         transactions: [],
-        theme: "light"
+        theme: "light",
+        currentPage: "ledger"
       };
     }
 
@@ -455,10 +504,21 @@
           maleSalary: 0,
           femaleSalary: 0,
           maleTransfer: 0,
-          femaleTransfer: 0
+          femaleTransfer: 0,
+          commonBudgets: {}
         };
       }
+      state.monthly[month].commonBudgets = state.monthly[month].commonBudgets || {};
       return state.monthly[month];
+    }
+
+    function renderBudgetInputs(){
+      els.commonBudgetInputs.innerHTML = COMMON_BUDGET_CATEGORIES.map(cat => `
+        <div>
+          <label>${escapeHtml(cat)}の月予算（共通費）</label>
+          <input type="number" data-budget-cat="${escapeHtml(cat)}" placeholder="例 20000" />
+        </div>
+      `).join("");
     }
 
     function loadMonthlyInputs(){
@@ -467,6 +527,10 @@
       els.femaleSalary.value = m.femaleSalary || "";
       els.maleTransfer.value = m.maleTransfer || "";
       els.femaleTransfer.value = m.femaleTransfer || "";
+      COMMON_BUDGET_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-budget-cat="${cat}"]`);
+        if(input) input.value = m.commonBudgets?.[cat] || "";
+      });
     }
 
     function saveMonthlyData(){
@@ -475,8 +539,13 @@
       m.femaleSalary = Number(els.femaleSalary.value || 0);
       m.maleTransfer = Number(els.maleTransfer.value || 0);
       m.femaleTransfer = Number(els.femaleTransfer.value || 0);
+      m.commonBudgets = m.commonBudgets || {};
+      COMMON_BUDGET_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-budget-cat="${cat}"]`);
+        m.commonBudgets[cat] = Number(input?.value || 0);
+      });
       saveState();
-      renderSummary();
+      renderAll();
       alert("月初設定を保存しました");
     }
 
@@ -609,6 +678,19 @@
       renderSummary();
       renderTransactions();
       renderCharts();
+      renderBudgetAnalysis();
+      renderPieCharts();
+      renderCalendar();
+    }
+
+    function setPage(page){
+      state.currentPage = page;
+      saveState();
+      els.pageCards.forEach(card => {
+        const scope = card.dataset.page;
+        card.style.display = (scope === "all" || scope === page) ? "" : "none";
+      });
+      els.tabButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.tab === page));
     }
 
     function renderSummary(){
@@ -732,6 +814,63 @@
           </div>
         </div>
       `;
+    }
+
+    function renderBudgetAnalysis(){
+      const list = getTransactionsForCurrentMonth().filter(t => t.owner === "common");
+      const budgets = getMonthData(state.currentMonth).commonBudgets || {};
+      els.budgetAnalysisArea.innerHTML = COMMON_BUDGET_CATEGORIES.map(cat => {
+        const spent = sum(list.filter(t => t.category.includes(cat)).map(t => t.amount));
+        const budget = Number(budgets[cat] || 0);
+        const diff = budget - spent;
+        const total = Math.max(budget, spent, 1);
+        const color = diff >= 0 ? "var(--male)" : "var(--danger)";
+        const text = diff >= 0 ? `残額 ${yen(diff)}` : `${yen(diff)}`;
+        return `
+          <div style="margin-bottom:12px;border:1px solid var(--line);border-radius:12px;padding:10px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;">
+              <div>${escapeHtml(cat)}（予算 ${yen(budget)} / 使用 ${yen(spent)}）</div>
+              <div class="budget-result ${diff >= 0 ? "under" : "over"}">${text}</div>
+            </div>
+            <div class="chartbar"><div class="chartfill" style="width:${Math.round((spent/total)*100)}%;background:${color}"></div></div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderPieCharts(){
+      const list = getTransactionsForCurrentMonth();
+      const m = getMonthData(state.currentMonth);
+      const maleSpent = sum(list.filter(t => t.owner === "male").map(t => t.amount));
+      const femaleSpent = sum(list.filter(t => t.owner === "female").map(t => t.amount));
+      const commonSpent = sum(list.filter(t => t.owner === "common").map(t => t.amount));
+      const pies = [
+        {label:"男", income:Number(m.maleSalary || 0), expense:maleSpent, color:"var(--male)"},
+        {label:"女", income:Number(m.femaleSalary || 0), expense:femaleSpent, color:"var(--female)"},
+        {label:"共通", income:Number(m.maleTransfer || 0) + Number(m.femaleTransfer || 0), expense:commonSpent, color:"var(--common)"}
+      ];
+      els.pieArea.innerHTML = pies.map(p => {
+        const total = Math.max(p.income, p.expense, 1);
+        const pct = Math.min(100, Math.round((p.expense / total) * 100));
+        return `<div class="pie-card">
+          <div style="font-weight:700;margin-bottom:8px;">${p.label} 収支</div>
+          <div class="pie" style="background:conic-gradient(${p.color} 0 ${pct}%, var(--line) ${pct}% 100%);"></div>
+          <div class="muted">支出 ${yen(p.expense)} / 元金 ${yen(p.income)}</div>
+        </div>`;
+      }).join("");
+    }
+
+    function renderCalendar(){
+      const month = state.currentMonth;
+      if(!month) return;
+      const [y,m] = month.split("-").map(Number);
+      const firstDay = new Date(y, m - 1, 1);
+      const lastDate = new Date(y, m, 0).getDate();
+      const marks = new Set(getTransactionsForCurrentMonth().map(t => Number(t.date.slice(8,10))));
+      const heads = ["日","月","火","水","木","金","土"].map(d => `<div class="cal-cell cal-head">${d}</div>`).join("");
+      const blanks = Array(firstDay.getDay()).fill('<div class="cal-cell"></div>').join("");
+      const days = Array.from({length:lastDate}, (_,i) => i + 1).map(day => `<div class="cal-cell">${day}${marks.has(day) ? '<span class="cal-mark"></span>' : ''}</div>`).join("");
+      els.calendarArea.innerHTML = `<div class="calendar">${heads}${blanks}${days}</div><div class="muted section-space">● がついている日が支出あり</div>`;
     }
 
     function barRow(label, value, total, color){
