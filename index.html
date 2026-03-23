@@ -185,11 +185,43 @@
       border-radius:999px;
     }
     .section-space{margin-top:16px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .tab-btn{width:auto;padding:8px 14px}
+    .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .pie-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+    .pie-card{border:1px solid var(--line);border-radius:16px;padding:16px}
+    .pie{
+      width:min(240px,70vw);
+      height:min(240px,70vw);
+      border-radius:50%;
+      margin:0 auto 14px;
+      background:conic-gradient(var(--accent) 0 50%, var(--line) 50% 100%);
+      border:1px solid var(--line);
+    }
+    .pie-title{font-size:17px;font-weight:700;margin-bottom:10px}
+    .pie-summary{font-size:14px;margin-bottom:12px}
+    .legend{display:grid;gap:8px}
+    .legend-item{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
+    .legend-label{display:flex;align-items:center;gap:8px;min-width:0}
+    .legend-color{width:14px;height:14px;border-radius:4px;flex-shrink:0;border:1px solid rgba(0,0,0,.08)}
+    .legend-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .section-title{font-weight:700;font-size:16px;margin-bottom:12px}
+    .bar-group{display:grid;gap:14px}
+    .bar-box{border:1px solid var(--line);border-radius:14px;padding:14px}
+    .budget-result{font-weight:700}
+    .budget-result.over{color:var(--danger)}
+    .budget-result.under{color:var(--male)}
+    .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .cal-cell{border:1px solid var(--line);border-radius:10px;padding:10px;min-height:56px;font-size:13px}
+    .cal-head{font-weight:700;text-align:center;background:var(--bg)}
+    .cal-mark{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-left:4px}
     @media (max-width: 820px){
       .grid-2,.grid-3,.grid-4,.summary{grid-template-columns:1fr}
       .title{font-size:20px}
       table{font-size:13px}
       .hide-mobile{display:none}
+      .pie-card{padding:14px}
+      .legend-item{font-size:13px}
     }
   </style>
 </head>
@@ -205,7 +237,13 @@
     </div>
 
     <div class="row">
-      <div class="card">
+      <div class="card" style="padding:12px;" data-page="all">
+        <div class="tabs">
+          <button class="btn-sub tab-btn active" data-tab="ledger" id="ledgerTab">家計簿</button>
+          <button class="btn-sub tab-btn" data-tab="analysis" id="analysisTab">分析</button>
+        </div>
+      </div>
+      <div class="card" data-page="ledger">
         <h2>表示月</h2>
         <div class="grid-4">
           <div>
@@ -215,37 +253,38 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>月初設定</h2>
         <div class="grid-4">
           <div>
-            <label>男の給料</label>
+            <label>Kの収入</label>
             <input type="number" id="maleSalary" placeholder="例 300000" />
           </div>
           <div>
-            <label>女の給料</label>
+            <label>Aの収入</label>
             <input type="number" id="femaleSalary" placeholder="例 250000" />
           </div>
           <div>
-            <label>男の共通振込額</label>
+            <label>Kの共通振込額</label>
             <input type="number" id="maleTransfer" placeholder="例 80000" />
           </div>
           <div>
-            <label>女の共通振込額</label>
+            <label>Aの共通振込額</label>
             <input type="number" id="femaleTransfer" placeholder="例 50000" />
           </div>
         </div>
+        <div id="commonBudgetInputs" class="grid-3 section-space"></div>
         <div class="section-space">
           <button class="btn-primary" id="saveMonthlyBtn">月初設定を保存</button>
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>今月サマリー</h2>
         <div class="summary" id="summaryArea"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>支出入力</h2>
         <div class="grid-4">
           <div>
@@ -260,8 +299,8 @@
             <label>支出区分</label>
             <select id="owner">
               <option value="common">共通</option>
-              <option value="male">男</option>
-              <option value="female">女</option>
+              <option value="male">K</option>
+              <option value="female">A</option>
             </select>
           </div>
           <div>
@@ -282,7 +321,7 @@
         <div class="muted section-space" id="editState"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="ledger">
         <h2>カテゴリ管理</h2>
         <div class="grid-3">
           <div>
@@ -298,12 +337,27 @@
         <div class="section-space" id="categoryList"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="analysis">
         <h2>支出グラフ分析</h2>
         <div id="chartArea"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="analysis">
+        <h2>共通費用 目標達成分析</h2>
+        <div id="budgetAnalysisArea"></div>
+      </div>
+
+      <div class="card" data-page="analysis">
+        <h2>収支円グラフ（男・女・共通）</h2>
+        <div id="pieArea" class="pie-wrap"></div>
+      </div>
+
+      <div class="card" data-page="analysis">
+        <h2>支出カレンダー</h2>
+        <div id="calendarArea"></div>
+      </div>
+
+      <div class="card" data-page="ledger">
         <h2>支出一覧</h2>
         <div class="grid-4">
           <div>
@@ -311,8 +365,8 @@
             <select id="filterOwner">
               <option value="">すべて</option>
               <option value="common">共通</option>
-              <option value="male">男</option>
-              <option value="female">女</option>
+              <option value="male">K</option>
+              <option value="female">A</option>
             </select>
           </div>
           <div>
@@ -351,6 +405,13 @@
 
   <script>
     const DEFAULT_CATEGORIES = ["食費","日用品","交通費","娯楽","通信費","水道光熱費","家賃","医療費","交際費","その他"];
+    const COMMON_BUDGET_CATEGORIES = ["家賃","水道","電気","ガス","日用品","食費"];
+    const FIXED_CHART_COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#8b5cf6","#14b8a6","#ec4899","#f97316","#06b6d4","#84cc16","#6366f1","#a855f7"];
+    const OWNER_META = {
+      common: { label: "共通", color: "var(--common)" },
+      male: { label: "K", color: "var(--male)", share: 0.6, incomeKey: "maleSalary" },
+      female: { label: "A", color: "var(--female)", share: 0.4, incomeKey: "femaleSalary" }
+    };
     const STORAGE_KEY = "kakeibo_app_v1";
 
     const state = loadState();
@@ -363,6 +424,7 @@
       maleTransfer: document.getElementById("maleTransfer"),
       femaleTransfer: document.getElementById("femaleTransfer"),
       saveMonthlyBtn: document.getElementById("saveMonthlyBtn"),
+      commonBudgetInputs: document.getElementById("commonBudgetInputs"),
       date: document.getElementById("date"),
       amount: document.getElementById("amount"),
       owner: document.getElementById("owner"),
@@ -379,10 +441,15 @@
       newCategory: document.getElementById("newCategory"),
       categoryList: document.getElementById("categoryList"),
       chartArea: document.getElementById("chartArea"),
+      budgetAnalysisArea: document.getElementById("budgetAnalysisArea"),
+      pieArea: document.getElementById("pieArea"),
+      calendarArea: document.getElementById("calendarArea"),
       exportBtn: document.getElementById("exportBtn"),
       resetBtn: document.getElementById("resetBtn"),
       themeBtn: document.getElementById("themeBtn"),
-      editState: document.getElementById("editState")
+      editState: document.getElementById("editState"),
+      pageCards: [...document.querySelectorAll("[data-page]")],
+      tabButtons: [...document.querySelectorAll(".tab-btn")]
     };
 
     init();
@@ -397,8 +464,10 @@
       applyTheme();
       renderCategoryOptions();
       renderFilterCategoryOptions();
+      renderBudgetInputs();
       loadMonthlyInputs();
       renderAll();
+      setPage(state.currentPage || "ledger");
 
       els.monthPicker.addEventListener("change", () => {
         state.currentMonth = els.monthPicker.value;
@@ -422,6 +491,9 @@
       els.exportBtn.addEventListener("click", exportCSV);
       els.resetBtn.addEventListener("click", resetAll);
       els.themeBtn.addEventListener("click", toggleTheme);
+      els.tabButtons.forEach(btn => {
+        btn.addEventListener("click", () => setPage(btn.dataset.tab));
+      });
     }
 
     function loadState(){
@@ -433,6 +505,7 @@
           parsed.monthly = parsed.monthly || {};
           parsed.transactions = parsed.transactions || [];
           parsed.theme = parsed.theme || "light";
+          parsed.currentPage = parsed.currentPage || "ledger";
           return parsed;
         }catch(e){}
       }
@@ -441,7 +514,8 @@
         categories: [...DEFAULT_CATEGORIES],
         monthly: {},
         transactions: [],
-        theme: "light"
+        theme: "light",
+        currentPage: "ledger"
       };
     }
 
@@ -455,10 +529,21 @@
           maleSalary: 0,
           femaleSalary: 0,
           maleTransfer: 0,
-          femaleTransfer: 0
+          femaleTransfer: 0,
+          commonBudgets: {}
         };
       }
+      state.monthly[month].commonBudgets = state.monthly[month].commonBudgets || {};
       return state.monthly[month];
+    }
+
+    function renderBudgetInputs(){
+      els.commonBudgetInputs.innerHTML = COMMON_BUDGET_CATEGORIES.map(cat => `
+        <div>
+          <label>${escapeHtml(cat)}の月予算（共通費）</label>
+          <input type="number" data-budget-cat="${escapeHtml(cat)}" placeholder="例 20000" />
+        </div>
+      `).join("");
     }
 
     function loadMonthlyInputs(){
@@ -467,6 +552,10 @@
       els.femaleSalary.value = m.femaleSalary || "";
       els.maleTransfer.value = m.maleTransfer || "";
       els.femaleTransfer.value = m.femaleTransfer || "";
+      COMMON_BUDGET_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-budget-cat="${cat}"]`);
+        if(input) input.value = m.commonBudgets?.[cat] || "";
+      });
     }
 
     function saveMonthlyData(){
@@ -475,8 +564,13 @@
       m.femaleSalary = Number(els.femaleSalary.value || 0);
       m.maleTransfer = Number(els.maleTransfer.value || 0);
       m.femaleTransfer = Number(els.femaleTransfer.value || 0);
+      m.commonBudgets = m.commonBudgets || {};
+      COMMON_BUDGET_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-budget-cat="${cat}"]`);
+        m.commonBudgets[cat] = Number(input?.value || 0);
+      });
       saveState();
-      renderSummary();
+      renderAll();
       alert("月初設定を保存しました");
     }
 
@@ -609,48 +703,48 @@
       renderSummary();
       renderTransactions();
       renderCharts();
+      renderBudgetAnalysis();
+      renderPieCharts();
+      renderCalendar();
+    }
+
+    function setPage(page){
+      state.currentPage = page;
+      saveState();
+      els.pageCards.forEach(card => {
+        const scope = card.dataset.page;
+        card.style.display = (scope === "all" || scope === page) ? "" : "none";
+      });
+      els.tabButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.tab === page));
     }
 
     function renderSummary(){
-      const list = getTransactionsForCurrentMonth();
-      const monthData = getMonthData(state.currentMonth);
-
-      const commonExpense = sum(list.filter(t => t.owner === "common").map(t => t.amount));
-      const maleExpense = sum(list.filter(t => t.owner === "male").map(t => t.amount));
-      const femaleExpense = sum(list.filter(t => t.owner === "female").map(t => t.amount));
-      const totalTransfer = Number(monthData.maleTransfer || 0) + Number(monthData.femaleTransfer || 0);
-
-      const commonRemain = totalTransfer - commonExpense;
-      const maleRemain = Number(monthData.maleSalary || 0) - maleExpense;
-      const femaleRemain = Number(monthData.femaleSalary || 0) - femaleExpense;
-
-      const maleAdjusted = Number(monthData.maleSalary || 0) - maleExpense - commonExpense * 0.6;
-      const femaleAdjusted = Number(monthData.femaleSalary || 0) - femaleExpense - commonExpense * 0.4;
+      const finance = getMonthlyFinance();
 
       els.summaryArea.innerHTML = `
         <div class="metric">
           <div class="label">2人の振込額 - 共通支出</div>
-          <div class="value">${yen(commonRemain)}</div>
+          <div class="value">${yen(finance.commonRemain)}</div>
         </div>
         <div class="metric">
-          <div class="label">男の給料 - 男の支出合計</div>
-          <div class="value">${yen(maleRemain)}</div>
+          <div class="label">Kの収支（収入 - 個人支出 - 共通負担60%）</div>
+          <div class="value">${yen(finance.ownerBalances.male)}</div>
         </div>
         <div class="metric">
-          <div class="label">女の給料 - 女の支出合計</div>
-          <div class="value">${yen(femaleRemain)}</div>
+          <div class="label">Aの収支（収入 - 個人支出 - 共通負担40%）</div>
+          <div class="value">${yen(finance.ownerBalances.female)}</div>
         </div>
         <div class="metric">
           <div class="label">共通支出合計</div>
-          <div class="value">${yen(commonExpense)}</div>
+          <div class="value">${yen(finance.commonExpense)}</div>
         </div>
         <div class="metric">
-          <div class="label">男の按分後残額（共通費60%反映）</div>
-          <div class="value">${yen(maleAdjusted)}</div>
+          <div class="label">Kの個人支出 + 共通負担</div>
+          <div class="value">${yen(finance.ownerExpenses.male + finance.ownerCommonShare.male)}</div>
         </div>
         <div class="metric">
-          <div class="label">女の按分後残額（共通費40%反映）</div>
-          <div class="value">${yen(femaleAdjusted)}</div>
+          <div class="label">Aの個人支出 + 共通負担</div>
+          <div class="value">${yen(finance.ownerExpenses.female + finance.ownerCommonShare.female)}</div>
         </div>
       `;
     }
@@ -706,47 +800,232 @@
     }
 
     function renderCharts(){
-      const list = getTransactionsForCurrentMonth();
-      const byOwner = {
-        common: sum(list.filter(t => t.owner === "common").map(t => t.amount)),
-        male: sum(list.filter(t => t.owner === "male").map(t => t.amount)),
-        female: sum(list.filter(t => t.owner === "female").map(t => t.amount))
-      };
-      const total = byOwner.common + byOwner.male + byOwner.female || 1;
-
-      const catMap = {};
-      list.forEach(t => catMap[t.category] = (catMap[t.category] || 0) + t.amount);
-      const catRows = Object.entries(catMap).sort((a,b) => b[1]-a[1]);
+      const finance = getMonthlyFinance();
+      const total = finance.commonExpense + finance.ownerExpenses.male + finance.ownerExpenses.female || 1;
+      const catRows = Object.entries(finance.categoryTotals).sort((a,b) => b[1]-a[1]);
 
       els.chartArea.innerHTML = `
         <div class="grid-2">
-          <div>
-            <div style="font-weight:700;margin-bottom:10px;">共通 / 男 / 女 の比率</div>
-            ${barRow("共通", byOwner.common, total, "var(--common)")}
-            ${barRow("男", byOwner.male, total, "var(--male)")}
-            ${barRow("女", byOwner.female, total, "var(--female)")}
+          <div class="bar-box">
+            <div class="section-title">支出区分の比率</div>
+            <div class="bar-group">
+              ${barRow("共通", finance.commonExpense, total, "var(--common)")}
+              ${barRow("K", finance.ownerExpenses.male, total, "var(--male)")}
+              ${barRow("A", finance.ownerExpenses.female, total, "var(--female)")}
+            </div>
           </div>
-          <div>
-            <div style="font-weight:700;margin-bottom:10px;">カテゴリ別支出</div>
-            ${catRows.length ? catRows.map(([name,val]) => barRow(name, val, sum(catRows.map(x=>x[1])) || 1, randomColor(name))).join("") : '<div class="muted">まだデータがありません</div>'}
+          <div class="bar-box">
+            <div class="section-title">カテゴリ別支出</div>
+            <div class="bar-group">
+              ${catRows.length ? catRows.map(([name,val]) => barRow(name, val, sum(catRows.map(x=>x[1])) || 1, getCategoryColor(name))).join("") : '<div class="muted">まだデータがありません</div>'}
+            </div>
           </div>
         </div>
       `;
     }
 
+    function renderBudgetAnalysis(){
+      const list = getTransactionsForCurrentMonth().filter(t => t.owner === "common");
+      const budgets = getMonthData(state.currentMonth).commonBudgets || {};
+      els.budgetAnalysisArea.innerHTML = COMMON_BUDGET_CATEGORIES.map(cat => {
+        const spent = sum(list.filter(t => t.category.includes(cat)).map(t => t.amount));
+        const budget = Number(budgets[cat] || 0);
+        const diff = budget - spent;
+        const total = Math.max(budget, spent, 1);
+        const color = diff >= 0 ? "var(--male)" : "var(--danger)";
+        const text = diff >= 0 ? `残額 ${yen(diff)}` : `${yen(diff)}`;
+        return `
+          <div style="margin-bottom:14px;border:1px solid var(--line);border-radius:14px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;">
+              <div>${escapeHtml(cat)}（予算 ${yen(budget)} / 使用 ${yen(spent)}）</div>
+              <div class="budget-result ${diff >= 0 ? "under" : "over"}">${text}</div>
+            </div>
+            <div class="chartbar" style="height:18px;margin-top:10px;"><div class="chartfill" style="width:${Math.round((spent/total)*100)}%;background:${color}"></div></div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderPieCharts(){
+      const finance = getMonthlyFinance();
+      const charts = [
+        buildOwnerPieData("male", finance),
+        buildOwnerPieData("female", finance),
+        buildCommonPieData(finance)
+      ];
+
+      els.pieArea.innerHTML = charts.map(chart => {
+        const gradient = buildPieGradient(chart.segments);
+        return `<div class="pie-card">
+          <div class="pie-title">${chart.title}</div>
+          <div class="pie" style="background:${gradient};"></div>
+          <div class="pie-summary muted">${chart.summary}</div>
+          <div class="legend">
+            ${chart.segments.map(segment => `
+              <div class="legend-item">
+                <div class="legend-label">
+                  <span class="legend-color" style="background:${segment.color};"></span>
+                  <span class="legend-text">${escapeHtml(segment.label)}</span>
+                </div>
+                <div>${yen(segment.displayValue)} / ${segment.percent}%</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function renderCalendar(){
+      const month = state.currentMonth;
+      if(!month) return;
+      const [y,m] = month.split("-").map(Number);
+      const firstDay = new Date(y, m - 1, 1);
+      const lastDate = new Date(y, m, 0).getDate();
+      const marks = new Set(getTransactionsForCurrentMonth().map(t => Number(t.date.slice(8,10))));
+      const heads = ["日","月","火","水","木","金","土"].map(d => `<div class="cal-cell cal-head">${d}</div>`).join("");
+      const blanks = Array(firstDay.getDay()).fill('<div class="cal-cell"></div>').join("");
+      const days = Array.from({length:lastDate}, (_,i) => i + 1).map(day => `<div class="cal-cell">${day}${marks.has(day) ? '<span class="cal-mark"></span>' : ''}</div>`).join("");
+      els.calendarArea.innerHTML = `<div class="calendar">${heads}${blanks}${days}</div><div class="muted section-space">● がついている日が支出あり</div>`;
+    }
+
     function barRow(label, value, total, color){
       const pct = Math.round((value / total) * 100);
       return `
-        <div style="margin-bottom:12px;">
+        <div>
           <div style="display:flex;justify-content:space-between;gap:8px;">
             <div>${escapeHtml(label)}</div>
             <div>${yen(value)} / ${pct}%</div>
           </div>
-          <div class="chartbar">
+          <div class="chartbar" style="height:18px;margin-top:8px;">
             <div class="chartfill" style="width:${pct}%;background:${color};"></div>
           </div>
         </div>
       `;
+    }
+
+    function getMonthlyFinance(){
+      const list = getTransactionsForCurrentMonth();
+      const monthData = getMonthData(state.currentMonth);
+      const commonExpense = sum(list.filter(t => t.owner === "common").map(t => t.amount));
+      const ownerExpenses = {
+        male: sum(list.filter(t => t.owner === "male").map(t => t.amount)),
+        female: sum(list.filter(t => t.owner === "female").map(t => t.amount))
+      };
+      const ownerIncomes = {
+        male: Number(monthData.maleSalary || 0),
+        female: Number(monthData.femaleSalary || 0)
+      };
+      const ownerCommonShare = {
+        male: commonExpense * OWNER_META.male.share,
+        female: commonExpense * OWNER_META.female.share
+      };
+      const ownerBalances = {
+        male: ownerIncomes.male - (ownerExpenses.male + ownerCommonShare.male),
+        female: ownerIncomes.female - (ownerExpenses.female + ownerCommonShare.female)
+      };
+      const commonIncome = Number(monthData.maleTransfer || 0) + Number(monthData.femaleTransfer || 0);
+      const categoryTotals = {};
+      list.forEach(t => {
+        const key = t.category || "未分類";
+        categoryTotals[key] = (categoryTotals[key] || 0) + Number(t.amount || 0);
+      });
+      return {
+        list,
+        monthData,
+        commonExpense,
+        commonIncome,
+        commonRemain: commonIncome - commonExpense,
+        ownerExpenses,
+        ownerIncomes,
+        ownerCommonShare,
+        ownerBalances,
+        categoryTotals
+      };
+    }
+
+    function buildOwnerPieData(owner, finance){
+      const ownerLabel = OWNER_META[owner].label;
+      const income = finance.ownerIncomes[owner];
+      const personalTx = finance.list.filter(t => t.owner === owner);
+      const categoryMap = {};
+      personalTx.forEach(t => {
+        const key = t.category || "未分類";
+        categoryMap[key] = (categoryMap[key] || 0) + Number(t.amount || 0);
+      });
+      categoryMap["共通負担"] = finance.ownerCommonShare[owner];
+      const spent = sum(Object.values(categoryMap));
+      if(income > spent){
+        categoryMap["残額"] = income - spent;
+      }else if(spent > income){
+        categoryMap["超過"] = spent - income;
+      }
+      return {
+        title: `${ownerLabel}の収支円グラフ`,
+        summary: `収入 ${yen(income)} / 支出+共通負担 ${yen(spent)}`,
+        segments: createPieSegments(categoryMap, income, spent)
+      };
+    }
+
+    function buildCommonPieData(finance){
+      const categoryMap = {};
+      finance.list.filter(t => t.owner === "common").forEach(t => {
+        const key = t.category || "未分類";
+        categoryMap[key] = (categoryMap[key] || 0) + Number(t.amount || 0);
+      });
+      if(finance.commonIncome > finance.commonExpense){
+        categoryMap["残額"] = finance.commonIncome - finance.commonExpense;
+      }else if(finance.commonExpense > finance.commonIncome){
+        categoryMap["超過"] = finance.commonExpense - finance.commonIncome;
+      }
+      return {
+        title: "共通費の円グラフ",
+        summary: `共通資金 ${yen(finance.commonIncome)} / 共通支出 ${yen(finance.commonExpense)}`,
+        segments: createPieSegments(categoryMap, finance.commonIncome, finance.commonExpense)
+      };
+    }
+
+    function createPieSegments(categoryMap, baseValue, spentValue){
+      const safeMap = Object.entries(categoryMap).filter(([, value]) => Number(value || 0) > 0);
+      if(!safeMap.length){
+        return [{
+          label: "データなし",
+          value: 1,
+          displayValue: 0,
+          color: "var(--line)",
+          percent: 0
+        }];
+      }
+      const total = Math.max(sum(safeMap.map(([, value]) => value)), baseValue || 0, spentValue || 0, 1);
+      return safeMap.map(([label, value]) => ({
+        label,
+        value,
+        displayValue: value,
+        color: getCategoryColor(label),
+        percent: Math.round((value / total) * 100)
+      }));
+    }
+
+    function buildPieGradient(segments){
+      if(!segments.length){
+        return "conic-gradient(var(--line) 0 100%)";
+      }
+      let current = 0;
+      const total = sum(segments.map(segment => segment.value)) || 1;
+      const stops = segments.map(segment => {
+        const start = current;
+        current += (segment.value / total) * 100;
+        return `${segment.color} ${start}% ${current}%`;
+      });
+      return `conic-gradient(${stops.join(",")})`;
+    }
+
+    function getCategoryColor(label){
+      if(label === "残額") return "#2563eb";
+      if(label === "超過") return "#ef4444";
+      if(label === "共通負担") return "#8b5cf6";
+      let code = 0;
+      for(let i = 0; i < label.length; i++) code += label.charCodeAt(i) * (i + 1);
+      return FIXED_CHART_COLORS[code % FIXED_CHART_COLORS.length];
     }
 
     function exportCSV(){
@@ -783,8 +1062,8 @@
 
     function ownerTag(owner){
       if(owner === "common") return '<span class="tag tag-common">共通</span>';
-      if(owner === "male") return '<span class="tag tag-male">男</span>';
-      return '<span class="tag tag-female">女</span>';
+      if(owner === "male") return '<span class="tag tag-male">K</span>';
+      return '<span class="tag tag-female">A</span>';
     }
 
     function yen(n){
@@ -793,13 +1072,6 @@
 
     function sum(arr){
       return arr.reduce((a,b) => a + Number(b || 0), 0);
-    }
-
-    function randomColor(text){
-      const colors = ["#10b981","#f59e0b","#8b5cf6","#3b82f6","#ef4444","#14b8a6","#ec4899"];
-      let code = 0;
-      for(let i=0;i<text.length;i++) code += text.charCodeAt(i);
-      return colors[code % colors.length];
     }
 
     function escapeHtml(str){
