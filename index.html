@@ -238,22 +238,23 @@
         <h2>月初設定</h2>
         <div class="grid-4">
           <div>
-            <label>男の給料</label>
+            <label>Kの給料</label>
             <input type="number" id="maleSalary" placeholder="例 300000" />
           </div>
           <div>
-            <label>女の給料</label>
+            <label>Aの給料</label>
             <input type="number" id="femaleSalary" placeholder="例 250000" />
           </div>
           <div>
-            <label>男の共通振込額</label>
+            <label>Kの共通振込額</label>
             <input type="number" id="maleTransfer" placeholder="例 80000" />
           </div>
           <div>
-            <label>女の共通振込額</label>
+            <label>Aの共通振込額</label>
             <input type="number" id="femaleTransfer" placeholder="例 50000" />
           </div>
         </div>
+        <div id="fixedCostInputs" class="grid-4 section-space"></div>
         <div id="commonBudgetInputs" class="grid-3 section-space"></div>
         <div class="section-space">
           <button class="btn-primary" id="saveMonthlyBtn">月初設定を保存</button>
@@ -280,8 +281,8 @@
             <label>支出区分</label>
             <select id="owner">
               <option value="common">共通</option>
-              <option value="male">男</option>
-              <option value="female">女</option>
+              <option value="male">K</option>
+              <option value="female">A</option>
             </select>
           </div>
           <div>
@@ -329,7 +330,7 @@
       </div>
 
       <div class="card" data-page="analysis">
-        <h2>収支円グラフ（男・女・共通）</h2>
+        <h2>収支円グラフ（K・A・共通）</h2>
         <div id="pieArea" class="pie-wrap"></div>
       </div>
 
@@ -346,8 +347,8 @@
             <select id="filterOwner">
               <option value="">すべて</option>
               <option value="common">共通</option>
-              <option value="male">男</option>
-              <option value="female">女</option>
+              <option value="male">K</option>
+              <option value="female">A</option>
             </select>
           </div>
           <div>
@@ -387,6 +388,7 @@
   <script>
     const DEFAULT_CATEGORIES = ["食費","日用品","交通費","娯楽","通信費","水道光熱費","家賃","医療費","交際費","その他"];
     const COMMON_BUDGET_CATEGORIES = ["家賃","水道","電気","ガス","日用品","食費"];
+    const FIXED_COST_CATEGORIES = ["車保険","自己投資","通信費","その他"];
     const STORAGE_KEY = "kakeibo_app_v1";
 
     const state = loadState();
@@ -399,6 +401,7 @@
       maleTransfer: document.getElementById("maleTransfer"),
       femaleTransfer: document.getElementById("femaleTransfer"),
       saveMonthlyBtn: document.getElementById("saveMonthlyBtn"),
+      fixedCostInputs: document.getElementById("fixedCostInputs"),
       commonBudgetInputs: document.getElementById("commonBudgetInputs"),
       date: document.getElementById("date"),
       amount: document.getElementById("amount"),
@@ -439,6 +442,7 @@
       applyTheme();
       renderCategoryOptions();
       renderFilterCategoryOptions();
+      renderFixedCostInputs();
       renderBudgetInputs();
       loadMonthlyInputs();
       renderAll();
@@ -478,6 +482,13 @@
           const parsed = JSON.parse(raw);
           parsed.categories = parsed.categories?.length ? parsed.categories : [...DEFAULT_CATEGORIES];
           parsed.monthly = parsed.monthly || {};
+          Object.keys(parsed.monthly).forEach(month => {
+            const monthData = parsed.monthly[month] || {};
+            if(monthData.isAutoCreated == null){
+              monthData.isAutoCreated = isEmptyAutoCreatedMonth(month, monthData, parsed.transactions || []);
+            }
+            parsed.monthly[month] = monthData;
+          });
           parsed.transactions = parsed.transactions || [];
           parsed.theme = parsed.theme || "light";
           parsed.currentPage = parsed.currentPage || "ledger";
@@ -494,6 +505,17 @@
       };
     }
 
+    function isEmptyAutoCreatedMonth(month, monthData, transactions){
+      const hasTransactions = transactions.some(t => t.month === month);
+      const hasMonthlyValues = Number(monthData.maleSalary || 0) > 0
+        || Number(monthData.femaleSalary || 0) > 0
+        || Number(monthData.maleTransfer || 0) > 0
+        || Number(monthData.femaleTransfer || 0) > 0;
+      const hasFixedCosts = FIXED_COST_CATEGORIES.some(cat => Number(monthData.fixedCosts?.[cat] || 0) > 0);
+      const hasCommonBudgets = Object.values(monthData.commonBudgets || {}).some(v => Number(v || 0) > 0);
+      return !hasTransactions && !hasMonthlyValues && !hasFixedCosts && !hasCommonBudgets;
+    }
+
     function saveState(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
@@ -505,11 +527,46 @@
           femaleSalary: 0,
           maleTransfer: 0,
           femaleTransfer: 0,
+          isAutoCreated: true,
+          fixedCosts: getInheritedFixedCosts(month),
           commonBudgets: {}
         };
       }
+      if(state.monthly[month].isAutoCreated){
+        state.monthly[month].fixedCosts = getInheritedFixedCosts(month);
+      }
+      state.monthly[month].fixedCosts = state.monthly[month].fixedCosts || {};
       state.monthly[month].commonBudgets = state.monthly[month].commonBudgets || {};
       return state.monthly[month];
+    }
+
+    function getInheritedFixedCosts(month){
+      let previousMonth = getPreviousMonth(month);
+      let previous = state.monthly[previousMonth];
+      while((!previous || previous.isAutoCreated) && previousMonth >= "2000-01"){
+        previousMonth = getPreviousMonth(previousMonth);
+        previous = state.monthly[previousMonth];
+      }
+      const fixedCosts = {};
+      FIXED_COST_CATEGORIES.forEach(cat => {
+        fixedCosts[cat] = Number(previous?.fixedCosts?.[cat] || 0);
+      });
+      return fixedCosts;
+    }
+
+    function getPreviousMonth(month){
+      const [year, mon] = month.split("-").map(Number);
+      const date = new Date(year, mon - 2, 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function renderFixedCostInputs(){
+      els.fixedCostInputs.innerHTML = FIXED_COST_CATEGORIES.map(cat => `
+        <div>
+          <label>${escapeHtml(cat)}（fixedCost）</label>
+          <input type="number" data-fixed-cost="${escapeHtml(cat)}" placeholder="例 10000" />
+        </div>
+      `).join("");
     }
 
     function renderBudgetInputs(){
@@ -527,6 +584,10 @@
       els.femaleSalary.value = m.femaleSalary || "";
       els.maleTransfer.value = m.maleTransfer || "";
       els.femaleTransfer.value = m.femaleTransfer || "";
+      FIXED_COST_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-fixed-cost="${cat}"]`);
+        if(input) input.value = m.fixedCosts?.[cat] || "";
+      });
       COMMON_BUDGET_CATEGORIES.forEach(cat => {
         const input = document.querySelector(`[data-budget-cat="${cat}"]`);
         if(input) input.value = m.commonBudgets?.[cat] || "";
@@ -539,6 +600,12 @@
       m.femaleSalary = Number(els.femaleSalary.value || 0);
       m.maleTransfer = Number(els.maleTransfer.value || 0);
       m.femaleTransfer = Number(els.femaleTransfer.value || 0);
+      m.isAutoCreated = false;
+      m.fixedCosts = m.fixedCosts || {};
+      FIXED_COST_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-fixed-cost="${cat}"]`);
+        m.fixedCosts[cat] = Number(input?.value || 0);
+      });
       m.commonBudgets = m.commonBudgets || {};
       COMMON_BUDGET_CATEGORIES.forEach(cat => {
         const input = document.querySelector(`[data-budget-cat="${cat}"]`);
@@ -715,11 +782,11 @@
           <div class="value">${yen(commonRemain)}</div>
         </div>
         <div class="metric">
-          <div class="label">男の給料 - 男の支出合計</div>
+          <div class="label">Kの給料 - Kの支出合計</div>
           <div class="value">${yen(maleRemain)}</div>
         </div>
         <div class="metric">
-          <div class="label">女の給料 - 女の支出合計</div>
+          <div class="label">Aの給料 - Aの支出合計</div>
           <div class="value">${yen(femaleRemain)}</div>
         </div>
         <div class="metric">
@@ -727,11 +794,11 @@
           <div class="value">${yen(commonExpense)}</div>
         </div>
         <div class="metric">
-          <div class="label">男の按分後残額（共通費60%反映）</div>
+          <div class="label">Kの按分後残額（共通費60%反映）</div>
           <div class="value">${yen(maleAdjusted)}</div>
         </div>
         <div class="metric">
-          <div class="label">女の按分後残額（共通費40%反映）</div>
+          <div class="label">Aの按分後残額（共通費40%反映）</div>
           <div class="value">${yen(femaleAdjusted)}</div>
         </div>
       `;
@@ -803,10 +870,10 @@
       els.chartArea.innerHTML = `
         <div class="grid-2">
           <div>
-            <div style="font-weight:700;margin-bottom:10px;">共通 / 男 / 女 の比率</div>
+            <div style="font-weight:700;margin-bottom:10px;">共通 / K / A の比率</div>
             ${barRow("共通", byOwner.common, total, "var(--common)")}
-            ${barRow("男", byOwner.male, total, "var(--male)")}
-            ${barRow("女", byOwner.female, total, "var(--female)")}
+            ${barRow("K", byOwner.male, total, "var(--male)")}
+            ${barRow("A", byOwner.female, total, "var(--female)")}
           </div>
           <div>
             <div style="font-weight:700;margin-bottom:10px;">カテゴリ別支出</div>
@@ -845,8 +912,8 @@
       const femaleSpent = sum(list.filter(t => t.owner === "female").map(t => t.amount));
       const commonSpent = sum(list.filter(t => t.owner === "common").map(t => t.amount));
       const pies = [
-        {label:"男", income:Number(m.maleSalary || 0), expense:maleSpent, color:"var(--male)"},
-        {label:"女", income:Number(m.femaleSalary || 0), expense:femaleSpent, color:"var(--female)"},
+        {label:"K", income:Number(m.maleSalary || 0), expense:maleSpent, color:"var(--male)"},
+        {label:"A", income:Number(m.femaleSalary || 0), expense:femaleSpent, color:"var(--female)"},
         {label:"共通", income:Number(m.maleTransfer || 0) + Number(m.femaleTransfer || 0), expense:commonSpent, color:"var(--common)"}
       ];
       els.pieArea.innerHTML = pies.map(p => {
@@ -922,8 +989,8 @@
 
     function ownerTag(owner){
       if(owner === "common") return '<span class="tag tag-common">共通</span>';
-      if(owner === "male") return '<span class="tag tag-male">男</span>';
-      return '<span class="tag tag-female">女</span>';
+      if(owner === "male") return '<span class="tag tag-male">K</span>';
+      return '<span class="tag tag-female">A</span>';
     }
 
     function yen(n){
