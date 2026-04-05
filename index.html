@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -408,6 +409,11 @@
     const DEFAULT_CATEGORIES = ["食費","日用品","交通費","娯楽","通信費","水道光熱費","家賃","医療費","交際費","その他"];
     const COMMON_BUDGET_CATEGORIES = ["家賃","水道","電気","ガス","日用品","食費"];
     const FIXED_COST_CATEGORIES = ["車保険","自己投資","通信費","その他"];
+    const OWNER_META = {
+  common: { label: "共通", color: "var(--common)", tagClass: "tag-common" },
+  male: { label: "K", color: "var(--male)", tagClass: "tag-male" },
+  female: { label: "A", color: "var(--female)", tagClass: "tag-female" }
+};
     const STORAGE_KEY = "kakeibo_app_v1";
 
     const state = loadState();
