@@ -795,11 +795,11 @@
         </div>
         <div class="metric">
           <div class="label">Kの給料 - Kの支出合計</div>
-          <div class="value">${yen(finance.maleRemain)}
+          <div class="value">${yen(finance.ownerRemain.male)}
         </div>
         <div class="metric">
           <div class="label">Aの給料 - Aの支出合計</div>
-          <div class="value">${yen(finance.femaleRemain)}
+          <div class="value">${yen(finance.ownerRemain.female)}
         </div>
         <div class="metric">
           <div class="label">共通支出合計</div>
@@ -807,11 +807,11 @@
         </div>
         <div class="metric">
           <div class="label">Kの按分後残額（共通費60%反映）</div>
-          <div class="value">${yen(finance.maleAdjusted)}</div>
+          <div class="value">${yen(finance.ownerBalances.male)}
         </div>
         <div class="metric">
           <div class="label">Aの按分後残額（共通費40%反映）</div>
-          <div class="value">${yen(finance.femaleAdjusted)}</div>
+          <div class="value">${yen(finance.ownerBalances.female)}
         </div>
       `;
     }
@@ -923,7 +923,7 @@
         {label:"共通", income:Number(m.maleTransfer || 0) + Number(m.femaleTransfer || 0), expense:commonSpent, color:"var(--common)"}
       ];
 
-      els.pieArea.innerHTML = charts.map(chart => {
+      els.pieArea.innerHTML = pies.map(chart => {
         const gradient = buildPieGradient(chart.segments);
         return `<div class="pie-card">
           <div class="pie-title">${chart.title}</div>
