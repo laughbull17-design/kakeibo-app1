@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -409,12 +408,117 @@
     const DEFAULT_CATEGORIES = ["食費","日用品","交通費","娯楽","通信費","水道光熱費","家賃","医療費","交際費","その他"];
     const COMMON_BUDGET_CATEGORIES = ["家賃","水道","電気","ガス","日用品","食費"];
     const FIXED_COST_CATEGORIES = ["車保険","自己投資","通信費","その他"];
+    const FIXED_CHART_COLORS = ["#4f46e5","#0f766e","#65a30d","#ea580c","#db2777","#2563eb","#7c3aed","#0891b2","#b45309","#6b7280"];
+    const CATEGORY_COLOR_MAP = {
+      "食費": "#ea580c",
+      "日用品": "#2563eb",
+      "交通費": "#0f766e",
+      "娯楽": "#db2777",
+      "通信費": "#7c3aed",
+      "水道光熱費": "#0891b2",
+      "家賃": "#65a30d",
+      "医療費": "#dc2626",
+      "交際費": "#14b8a6",
+      "その他": "#6b7280",
+      "固定費": "#4f46e5",
+      "水道代": "#0284c7",
+      "電気代": "#84cc16",
+      "ガス代": "#ec4899",
+      "美容": "#c026d3"
+    };
+    const PIE_PALETTES = {
+      male: ["#1d4ed8","#2563eb","#3b82f6","#60a5fa","#93c5fd","#bfdbfe"],
+      female: ["#7c3aed","#8b5cf6","#a78bfa","#c4b5fd","#ddd6fe","#ede9fe"],
+      common: ["#0f766e","#14b8a6","#2dd4bf","#5eead4","#99f6e4","#ccfbf1"]
+    };
     const OWNER_META = {
-  common: { label: "共通", color: "var(--common)", tagClass: "tag-common" },
-  male: { label: "K", color: "var(--male)", tagClass: "tag-male" },
-  female: { label: "A", color: "var(--female)", tagClass: "tag-female" }
-};
+      common: { label: "共通", color: "var(--common)", tagClass: "tag-common", share: 0 },
+      male: { label: "K", color: "var(--male)", tagClass: "tag-male", share: 0.6, incomeKey: "maleSalary" },
+      female: { label: "A", color: "var(--female)", tagClass: "tag-female", share: 0.4, incomeKey: "femaleSalary" }
+    };
     const STORAGE_KEY = "kakeibo_app_v1";
+    const RECOVERED_STATE_SNAPSHOTS = [
+      {
+        currentMonth: "2026-03",
+        categories: ["食費","日用品","交通費","娯楽","通信費","水道光熱費","家賃","医療費","交際費","その他","固定費","水道代","電気代","ガス代","美容"],
+        monthly: {
+          "2026-03": {
+            maleSalary: 230077,
+            femaleSalary: 200000,
+            maleTransfer: 59000,
+            femaleTransfer: 88000,
+            commonBudgets: {
+              家賃: 74144,
+              水道: 7000,
+              電気: 7000,
+              ガス: 3000,
+              日用品: 15000,
+              食費: 44000
+            }
+          },
+          "2026-04": {
+            maleSalary: 0,
+            femaleSalary: 0,
+            maleTransfer: 0,
+            femaleTransfer: 0,
+            commonBudgets: {}
+          }
+        },
+        transactions: [
+          { id: "34778a1a-61b4-41e8-8be2-ebdff5494bf5", date: "2026-03-27", month: "2026-03", amount: 74284, owner: "common", category: "家賃", memo: "" },
+          { id: "501d8cff-7f11-448b-bbd2-b6c0f854aa57", date: "2026-03-27", month: "2026-03", amount: 8632, owner: "common", category: "電気代", memo: "電気" },
+          { id: "0813a486-dfa2-4cea-b349-cc7918468b95", date: "2026-03-31", month: "2026-03", amount: 6822, owner: "common", category: "水道代", memo: "水道" },
+          { id: "0f207459-e1be-4571-b50c-50fe76b1d4d2", date: "2026-03-01", month: "2026-03", amount: 10000, owner: "male", category: "固定費", memo: "車保険" },
+          { id: "5d1ee8cb-b417-4063-831f-423221c96a09", date: "2026-03-01", month: "2026-03", amount: 15500, owner: "male", category: "固定費", memo: "車ローン" },
+          { id: "37112709-561c-4b91-907f-22e20cf0d64c", date: "2026-03-23", month: "2026-03", amount: 890, owner: "male", category: "固定費", memo: "洗車サブスク" },
+          { id: "87400900-5c18-4571-ab2e-9d874a761088", date: "2026-03-01", month: "2026-03", amount: 7000, owner: "male", category: "固定費", memo: "エニタイムフィットネス" },
+          { id: "2e0ec5ff-61c0-4962-9ffb-1990b883ac1f", date: "2026-03-01", month: "2026-03", amount: 3000, owner: "male", category: "固定費", memo: "chatGPT" },
+          { id: "55a6cea9-1d13-4f4a-85a6-94a878f07d93", date: "2026-03-01", month: "2026-03", amount: 20000, owner: "male", category: "固定費", memo: "積立NISA" },
+          { id: "67adee19-296a-4894-ac93-e8f234bc98d1", date: "2026-03-21", month: "2026-03", amount: 289, owner: "common", category: "食費", memo: "" },
+          { id: "617115ea-f1e4-458d-bc96-dde1f80ef140", date: "2026-03-20", month: "2026-03", amount: 405, owner: "male", category: "交際費", memo: "" },
+          { id: "d5266fbd-6a0a-4ec6-b168-f602abf0277e", date: "2026-03-17", month: "2026-03", amount: 900, owner: "male", category: "その他", memo: "お土産" },
+          { id: "a532055c-f0c9-4862-824d-069ed627c0f8", date: "2026-03-19", month: "2026-03", amount: 300, owner: "male", category: "その他", memo: "LANケーブル" },
+          { id: "a3175853-f5f4-43c9-aa0d-8fa3e0e02406", date: "2026-03-01", month: "2026-03", amount: 3281, owner: "male", category: "通信費", memo: "" },
+          { id: "88171b6e-8576-4374-86d3-67329b76c091", date: "2026-03-19", month: "2026-03", amount: 2288, owner: "male", category: "その他", memo: "アダプタ💢" },
+          { id: "ee45baf3-d5a6-4319-ad59-311ad64f0b9d", date: "2026-03-20", month: "2026-03", amount: 5940, owner: "male", category: "その他", memo: "ジェラピケプレゼント" },
+          { id: "3e4d53cc-90f1-4723-b465-c790428ce2e3", date: "2026-03-20", month: "2026-03", amount: 330, owner: "common", category: "日用品", memo: "" },
+          { id: "20564778-0691-4883-977c-034e7088207f", date: "2026-03-20", month: "2026-03", amount: 55000, owner: "common", category: "その他", memo: "押し花" },
+          { id: "d4be5069-1919-46d3-a0af-9f4d6c55b405", date: "2026-03-11", month: "2026-03", amount: 399, owner: "common", category: "日用品", memo: "" },
+          { id: "a63cf998-38d1-49cd-afc1-78169a3e89d1", date: "2026-03-10", month: "2026-03", amount: 2328, owner: "common", category: "食費", memo: "" },
+          { id: "c319ff15-e0ba-40e4-ad1f-32d952f29280", date: "2026-03-20", month: "2026-03", amount: 1797, owner: "common", category: "食費", memo: "" },
+          { id: "7f545884-28e7-4a65-ad58-94b395c7bbf0", date: "2026-03-18", month: "2026-03", amount: 220, owner: "male", category: "その他", memo: "マウスパッド、メモ帳" },
+          { id: "48967a6f-4c48-4bfc-9eec-569a3254702e", date: "2026-03-18", month: "2026-03", amount: 854, owner: "common", category: "日用品", memo: "" },
+          { id: "40d9d187-728c-442c-b8fe-e7d294c38cd4", date: "2026-03-09", month: "2026-03", amount: 5765, owner: "common", category: "食費", memo: "" },
+          { id: "1a01ee2f-463b-4d43-a36f-e66c5074fc13", date: "2026-03-22", month: "2026-03", amount: 9160, owner: "common", category: "交際費", memo: "おだし日和かば" },
+          { id: "147059e1-225b-4dc9-85e9-50dda19129d3", date: "2026-03-16", month: "2026-03", amount: 1301, owner: "male", category: "その他", memo: "クッキープレゼント" },
+          { id: "6a53de93-767f-4885-a001-a9143b0b512c", date: "2026-03-23", month: "2026-03", amount: 3000, owner: "common", category: "交通費", memo: "ガソリン" },
+          { id: "564ec1aa-175e-4499-8339-eef0be02180e", date: "2026-03-23", month: "2026-03", amount: 2630, owner: "male", category: "交際費", memo: "三重・滋賀旅行" },
+          { id: "39bbe4d9-2698-41b7-86b2-279d86a4365a", date: "2026-03-15", month: "2026-03", amount: 5600, owner: "male", category: "交際費", memo: "鳥羽水族館" },
+          { id: "3ce64d60-89bc-45d4-bfb7-2953599388fb", date: "2026-03-15", month: "2026-03", amount: 535, owner: "male", category: "交際費", memo: "眠気覚まし" },
+          { id: "95b509ad-a97f-41cb-82a9-08361ee982e8", date: "2026-03-14", month: "2026-03", amount: 4636, owner: "common", category: "交通費", memo: "ガソリン" },
+          { id: "16509369-a998-492e-9cca-2eca431f5dec", date: "2026-03-15", month: "2026-03", amount: 2868, owner: "common", category: "交通費", memo: "" },
+          { id: "d24523a4-cd82-49c7-9772-1d7f83bb533b", date: "2026-03-01", month: "2026-03", amount: 15450, owner: "male", category: "美容", memo: "" },
+          { id: "5bf15d53-2782-4e5b-b947-d2f8df17fa5f", date: "2026-03-01", month: "2026-03", amount: 514, owner: "male", category: "美容", memo: "洗顔" },
+          { id: "d7dc04df-e7b2-4bb6-83a6-72238f745101", date: "2026-03-03", month: "2026-03", amount: 1740, owner: "common", category: "食費", memo: "" },
+          { id: "c97cefa4-e212-4b97-b38c-ca4ee864989e", date: "2026-03-05", month: "2026-03", amount: 1584, owner: "common", category: "食費", memo: "" },
+          { id: "4d2df9fb-8205-4696-aa99-294a312c8fc3", date: "2026-03-07", month: "2026-03", amount: 1990, owner: "male", category: "医療費", memo: "歯医者" },
+          { id: "4ebf095f-3c74-4670-8bab-f58535e593ab", date: "2026-03-24", month: "2026-03", amount: 990, owner: "common", category: "日用品", memo: "" },
+          { id: "10f943a5-dd3a-46e4-8c28-5989b1ab3297", date: "2026-03-27", month: "2026-03", amount: 3635, owner: "common", category: "日用品", memo: "" },
+          { id: "9cf982ff-cb5a-4564-af4a-3fe931e34ccc", date: "2026-03-28", month: "2026-03", amount: 213, owner: "male", category: "食費", memo: "" },
+          { id: "c79df919-1c05-41ab-8530-3f3e8b8299a0", date: "2026-03-28", month: "2026-03", amount: 878, owner: "male", category: "交通費", memo: "" },
+          { id: "08769888-635a-4860-ab92-8694b734f966", date: "2026-03-25", month: "2026-03", amount: 878, owner: "male", category: "日用品", memo: "" },
+          { id: "b584f18d-04b1-4c02-86cb-10ef56c22e17", date: "2026-03-19", month: "2026-03", amount: 1980, owner: "male", category: "その他", memo: "cハブ" },
+          { id: "ec5e6fb2-6b31-4bf9-8335-55645189987c", date: "2026-03-22", month: "2026-03", amount: 2215, owner: "male", category: "その他", memo: "フィルム" },
+          { id: "46713bb4-8b49-4e64-b8a1-0b15d9bb1065", date: "2026-03-26", month: "2026-03", amount: 5486, owner: "male", category: "その他", memo: "靴" },
+          { id: "127dda51-ac58-4b23-8159-15b847c02b04", date: "2026-03-29", month: "2026-03", amount: 1167, owner: "common", category: "食費", memo: "" },
+          { id: "a5981709-638b-47b6-9ec2-e163a829bedb", date: "2026-03-29", month: "2026-03", amount: 2500, owner: "common", category: "娯楽", memo: "ゆとり" },
+          { id: "a472fed3-3591-4623-88a4-f77518c67169", date: "2026-03-29", month: "2026-03", amount: 868, owner: "common", category: "日用品", memo: "" },
+          { id: "c7059ba1-ac95-48c4-950b-afae17b3d4eb", date: "2026-03-30", month: "2026-03", amount: 2380, owner: "male", category: "交際費", memo: "サウナ、フタツメ" },
+          { id: "ef04f7f1-6ae1-4822-a90e-0ccfd1050f14", date: "2026-03-31", month: "2026-03", amount: 2380, owner: "common", category: "食費", memo: "" },
+          { id: "7e650726-19a5-41ec-a978-322c1d04271b", date: "2026-03-31", month: "2026-03", amount: 7384, owner: "common", category: "ガス代", memo: "" }
+        ]
+      }
+    ];
 
     const state = loadState();
     let editingId = null;
@@ -501,32 +605,278 @@
     }
 
     function loadState(){
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw){
-        try{
-          const parsed = JSON.parse(raw);
-          parsed.categories = parsed.categories?.length ? parsed.categories : [...DEFAULT_CATEGORIES];
-          parsed.monthly = parsed.monthly || {};
-          Object.keys(parsed.monthly).forEach(month => {
-            const monthData = parsed.monthly[month] || {};
-            if(monthData.isAutoCreated == null){
-              monthData.isAutoCreated = isEmptyAutoCreatedMonth(month, monthData, parsed.transactions || []);
-            }
-            parsed.monthly[month] = monthData;
-          });
-          parsed.transactions = parsed.transactions || [];
-          parsed.theme = parsed.theme || "light";
-          parsed.currentPage = parsed.currentPage || "ledger";
-          return parsed;
-        }catch(e){}
-      }
-      return {
+      const fallback = {
         currentMonth: "",
         categories: [...DEFAULT_CATEGORIES],
         monthly: {},
         transactions: [],
         theme: "light",
         currentPage: "ledger"
+      };
+      const candidates = [];
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try{
+          candidates.push(JSON.parse(raw));
+        }catch(e){}
+      }
+      candidates.push(...collectLegacyStateCandidates());
+      const normalized = candidates.length
+        ? normalizeState(mergeStateCandidates([fallback, ...candidates]))
+        : normalizeState(fallback);
+      const recovered = applyRecoveredSnapshots(normalized);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(recovered));
+      return recovered;
+    }
+
+    function collectLegacyStateCandidates(){
+      const candidates = [];
+      for(let i = 0; i < localStorage.length; i++){
+        const key = localStorage.key(i);
+        if(!key || key === STORAGE_KEY) continue;
+        const lowerKey = key.toLowerCase();
+        const raw = localStorage.getItem(key);
+        if(!raw || !/^\s*[\[{]/.test(raw)) continue;
+        try{
+          const parsed = JSON.parse(raw);
+          if(looksLikeKakeiboState(parsed, lowerKey)){
+            candidates.push(parsed);
+          }
+        }catch(e){}
+      }
+      return candidates;
+    }
+
+    function looksLikeKakeiboState(value, key = ""){
+      if(!value || typeof value !== "object") return false;
+      if(Array.isArray(value.transactions) || value.monthly || Array.isArray(value.categories)) return true;
+      if(key.includes("kakeibo")) return true;
+      return Object.keys(value).some(entryKey => {
+        return Boolean(normalizeMonthKey(entryKey))
+          || ["maleSalary","femaleSalary","maleTransfer","femaleTransfer","commonBudgets","fixedCosts"].includes(entryKey);
+      });
+    }
+
+    function mergeStateCandidates(candidates){
+      return candidates.reduce((merged, candidate) => mergeSingleState(merged, candidate), {
+        currentMonth: "",
+        categories: [],
+        monthly: {},
+        transactions: [],
+        theme: "light",
+        currentPage: "ledger"
+      });
+    }
+
+    function mergeSingleState(base, candidate){
+      const merged = base && typeof base === "object" ? {...base} : {};
+      const source = candidate && typeof candidate === "object" ? candidate : {};
+      const legacyMonthly = extractLegacyMonthlyEntries(source);
+
+      merged.categories = [
+        ...(Array.isArray(merged.categories) ? merged.categories : []),
+        ...(Array.isArray(source.categories) ? source.categories : [])
+      ];
+      merged.transactions = [
+        ...(Array.isArray(merged.transactions) ? merged.transactions : []),
+        ...(Array.isArray(source.transactions) ? source.transactions : [])
+      ];
+      merged.monthly = {
+        ...(merged.monthly && typeof merged.monthly === "object" ? merged.monthly : {}),
+        ...(source.monthly && typeof source.monthly === "object" ? source.monthly : {}),
+        ...legacyMonthly
+      };
+      if(!merged.currentMonth && source.currentMonth) merged.currentMonth = source.currentMonth;
+      if(merged.theme !== "dark" && source.theme === "dark") merged.theme = "dark";
+      if(merged.currentPage !== "analysis" && source.currentPage === "analysis") merged.currentPage = "analysis";
+      return merged;
+    }
+
+    function extractLegacyMonthlyEntries(source){
+      const monthly = {};
+      if(!source || typeof source !== "object") return monthly;
+      Object.keys(source).forEach(key => {
+        const monthKey = normalizeMonthKey(key);
+        if(!monthKey) return;
+        monthly[monthKey] = mergeMonthData(monthly[monthKey], source[key]);
+      });
+      return monthly;
+    }
+
+    function normalizeState(rawState){
+      const normalized = rawState && typeof rawState === "object" ? rawState : {};
+      normalized.categories = Array.isArray(normalized.categories) && normalized.categories.length
+        ? [...new Set(normalized.categories.map(cat => String(cat || "").trim()).filter(Boolean))]
+        : [...DEFAULT_CATEGORIES];
+      normalized.transactions = Array.isArray(normalized.transactions)
+        ? dedupeTransactions(normalized.transactions.map(normalizeTransaction).filter(Boolean))
+        : [];
+      normalized.monthly = normalizeMonthlyMap(normalized.monthly, normalized.transactions);
+      normalized.theme = normalized.theme === "dark" ? "dark" : "light";
+      normalized.currentPage = normalized.currentPage === "analysis" ? "analysis" : "ledger";
+      normalized.currentMonth = normalizeMonthKey(normalized.currentMonth);
+      return normalized;
+    }
+
+    function dedupeTransactions(transactions){
+      const map = new Map();
+      (transactions || []).forEach(tx => {
+        if(!tx || !tx.id) return;
+        map.set(tx.id, tx);
+      });
+      return [...map.values()].sort((a, b) => {
+        const dateDiff = String(a.date || "").localeCompare(String(b.date || ""));
+        if(dateDiff !== 0) return dateDiff;
+        return String(a.id).localeCompare(String(b.id));
+      });
+    }
+
+    function applyRecoveredSnapshots(currentState){
+      const base = normalizeState(currentState);
+      return RECOVERED_STATE_SNAPSHOTS.reduce((merged, snapshot) => {
+        const recovered = normalizeState(snapshot);
+        merged.categories = [...new Set([...(merged.categories || []), ...(recovered.categories || [])])];
+        merged.transactions = dedupeTransactions([...(merged.transactions || []), ...(recovered.transactions || [])]);
+
+        Object.entries(recovered.monthly || {}).forEach(([month, recoveredMonth]) => {
+          const target = getOrCreateRecoveredMonthData(merged, month);
+          fillRecoveredNumber(target, "maleSalary", recoveredMonth.maleSalary);
+          fillRecoveredNumber(target, "femaleSalary", recoveredMonth.femaleSalary);
+          fillRecoveredNumber(target, "maleTransfer", recoveredMonth.maleTransfer);
+          fillRecoveredNumber(target, "femaleTransfer", recoveredMonth.femaleTransfer);
+          COMMON_BUDGET_CATEGORIES.forEach(cat => fillRecoveredMapValue(target.commonBudgets, cat, recoveredMonth.commonBudgets?.[cat]));
+          Object.keys(recoveredMonth.fixedCosts || {}).forEach(cat => fillRecoveredMapValue(target.fixedCosts, cat, recoveredMonth.fixedCosts?.[cat]));
+          target.isAutoCreated = isEmptyAutoCreatedMonth(month, target, merged.transactions);
+          merged.monthly[month] = normalizeMonthData(month, target, merged.transactions);
+        });
+
+        if(!merged.currentMonth && recovered.currentMonth){
+          merged.currentMonth = recovered.currentMonth;
+        }
+        return normalizeState(merged);
+      }, base);
+    }
+
+    function getOrCreateRecoveredMonthData(targetState, month){
+      const existing = targetState.monthly?.[month];
+      if(existing && typeof existing === "object"){
+        return existing;
+      }
+      const fresh = normalizeMonthData(month, {
+        maleSalary: 0,
+        femaleSalary: 0,
+        maleTransfer: 0,
+        femaleTransfer: 0,
+        commonBudgets: {},
+        fixedCosts: {},
+        isAutoCreated: true
+      }, targetState.transactions || []);
+      targetState.monthly = targetState.monthly || {};
+      targetState.monthly[month] = fresh;
+      return fresh;
+    }
+
+    function fillRecoveredNumber(target, key, recoveredValue){
+      if(Number(target?.[key] || 0) > 0) return;
+      if(Number(recoveredValue || 0) <= 0) return;
+      target[key] = Number(recoveredValue || 0);
+    }
+
+    function fillRecoveredMapValue(targetMap, key, recoveredValue){
+      if(!targetMap || !key) return;
+      if(Number(targetMap[key] || 0) > 0) return;
+      if(Number(recoveredValue || 0) <= 0) return;
+      targetMap[key] = Number(recoveredValue || 0);
+    }
+
+    function normalizeMonthlyMap(monthlyMap, transactions){
+      const source = monthlyMap && typeof monthlyMap === "object" ? monthlyMap : {};
+      const normalized = {};
+      const months = new Set();
+      Object.keys(source).forEach(month => {
+        const normalizedMonth = normalizeMonthKey(month);
+        if(normalizedMonth){
+          months.add(normalizedMonth);
+          normalized[normalizedMonth] = mergeMonthData(normalized[normalizedMonth], source[month]);
+        }
+      });
+      (transactions || []).forEach(tx => {
+        if(tx?.month) months.add(tx.month);
+      });
+      months.forEach(month => {
+        normalized[month] = normalizeMonthData(month, normalized[month], transactions);
+      });
+      return normalized;
+    }
+
+    function mergeMonthData(base, extra){
+      const left = base && typeof base === "object" ? base : {};
+      const right = extra && typeof extra === "object" ? extra : {};
+      return {
+        ...left,
+        ...right,
+        fixedCosts: {
+          ...(left.fixedCosts && typeof left.fixedCosts === "object" ? left.fixedCosts : {}),
+          ...(right.fixedCosts && typeof right.fixedCosts === "object" ? right.fixedCosts : {})
+        },
+        commonBudgets: {
+          ...(left.commonBudgets && typeof left.commonBudgets === "object" ? left.commonBudgets : {}),
+          ...(right.commonBudgets && typeof right.commonBudgets === "object" ? right.commonBudgets : {})
+        }
+      };
+    }
+
+    function normalizeMonthKey(value){
+      const text = String(value || "").trim();
+      const match = text.match(/^(\d{4})[-/年](\d{1,2})(?:[-/月](\d{1,2})日?)?月?$/);
+      if(!match) return "";
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      if(!year || month < 1 || month > 12) return "";
+      return `${year}-${String(month).padStart(2, "0")}`;
+    }
+
+    function normalizeMonthData(month, rawMonthData, transactions){
+      const monthData = rawMonthData && typeof rawMonthData === "object" ? rawMonthData : {};
+      monthData.maleSalary = Number(monthData.maleSalary || 0);
+      monthData.femaleSalary = Number(monthData.femaleSalary || 0);
+      monthData.maleTransfer = Number(monthData.maleTransfer || 0);
+      monthData.femaleTransfer = Number(monthData.femaleTransfer || 0);
+      monthData.fixedCosts = normalizeNumberMap(monthData.fixedCosts, FIXED_COST_CATEGORIES);
+      monthData.commonBudgets = normalizeNumberMap(monthData.commonBudgets, COMMON_BUDGET_CATEGORIES);
+      if(monthData.isAutoCreated == null){
+        monthData.isAutoCreated = isEmptyAutoCreatedMonth(month, monthData, transactions);
+      }else{
+        monthData.isAutoCreated = Boolean(monthData.isAutoCreated);
+      }
+      return monthData;
+    }
+
+    function normalizeNumberMap(source, keys){
+      const normalized = source && typeof source === "object" ? {...source} : {};
+      keys.forEach(key => {
+        normalized[key] = Number(normalized[key] || 0);
+      });
+      return normalized;
+    }
+
+    function normalizeTransaction(tx, index){
+      if(!tx || typeof tx !== "object") return null;
+      const date = typeof tx.date === "string" && tx.date ? tx.date : "";
+      const month = normalizeMonthKey(tx.month) || normalizeMonthKey(date.slice(0,7));
+      const owner = normalizeOwner(tx.owner);
+      const category = typeof tx.category === "string" && tx.category.trim()
+        ? tx.category.trim()
+        : "未分類";
+      return {
+        ...tx,
+        id: tx.id || `legacy-${month || "month"}-${date || "date"}-${index || 0}`,
+        date,
+        month,
+        amount: Number(tx.amount || 0),
+        owner,
+        category,
+        memo: typeof tx.memo === "string" ? tx.memo : ""
       };
     }
 
@@ -547,51 +897,35 @@
 
     function getMonthData(month){
       if(!state.monthly[month]){
-        state.monthly[month] = {
+        state.monthly[month] = normalizeMonthData(month, {
           maleSalary: 0,
           femaleSalary: 0,
           maleTransfer: 0,
           femaleTransfer: 0,
-          isAutoCreated: true,
+          commonBudgets: {},
           fixedCosts: getInheritedFixedCosts(month),
-          commonBudgets: {}
-        };
+          isAutoCreated: true
+        }, state.transactions);
       }
       if(state.monthly[month].isAutoCreated){
         state.monthly[month].fixedCosts = getInheritedFixedCosts(month);
       }
-      state.monthly[month].fixedCosts = state.monthly[month].fixedCosts || {};
-      state.monthly[month].commonBudgets = state.monthly[month].commonBudgets || {};
+      state.monthly[month] = normalizeMonthData(month, state.monthly[month], state.transactions);
       return state.monthly[month];
     }
 
     function getInheritedFixedCosts(month){
-      let previousMonth = getPreviousMonth(month);
-      let previous = state.monthly[previousMonth];
-      while((!previous || previous.isAutoCreated) && previousMonth >= "2000-01"){
-        previousMonth = getPreviousMonth(previousMonth);
-        previous = state.monthly[previousMonth];
+      let previousMonth = getPreviousMonthKey(month);
+      const visited = new Set();
+      while(previousMonth && !visited.has(previousMonth)){
+        visited.add(previousMonth);
+        const previous = state.monthly[previousMonth];
+        if(previous && !previous.isAutoCreated){
+          return normalizeNumberMap(previous.fixedCosts, FIXED_COST_CATEGORIES);
+        }
+        previousMonth = getPreviousMonthKey(previousMonth);
       }
-      const fixedCosts = {};
-      FIXED_COST_CATEGORIES.forEach(cat => {
-        fixedCosts[cat] = Number(previous?.fixedCosts?.[cat] || 0);
-      });
-      return fixedCosts;
-    }
-
-    function getPreviousMonth(month){
-      const [year, mon] = month.split("-").map(Number);
-      const date = new Date(year, mon - 2, 1);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    }
-
-    function renderFixedCostInputs(){
-      els.fixedCostInputs.innerHTML = FIXED_COST_CATEGORIES.map(cat => `
-        <div>
-          <label>${escapeHtml(cat)}（fixedCost）</label>
-          <input type="number" data-fixed-cost="${escapeHtml(cat)}" placeholder="例 10000" />
-        </div>
-      `).join("");
+      return normalizeNumberMap({}, FIXED_COST_CATEGORIES);
     }
 
     function renderBudgetInputs(){
@@ -603,19 +937,28 @@
       `).join("");
     }
 
+    function renderFixedCostInputs(){
+      els.fixedCostInputs.innerHTML = FIXED_COST_CATEGORIES.map(cat => `
+        <div>
+          <label>${escapeHtml(cat)}（固定費・次月引き継ぎ）</label>
+          <input type="number" data-fixed-cost-cat="${escapeHtml(cat)}" placeholder="例 12000" />
+        </div>
+      `).join("");
+    }
+
     function loadMonthlyInputs(){
       const m = getMonthData(state.currentMonth);
       els.maleSalary.value = m.maleSalary || "";
       els.femaleSalary.value = m.femaleSalary || "";
       els.maleTransfer.value = m.maleTransfer || "";
       els.femaleTransfer.value = m.femaleTransfer || "";
-      FIXED_COST_CATEGORIES.forEach(cat => {
-        const input = document.querySelector(`[data-fixed-cost="${cat}"]`);
-        if(input) input.value = m.fixedCosts?.[cat] || "";
-      });
       COMMON_BUDGET_CATEGORIES.forEach(cat => {
         const input = document.querySelector(`[data-budget-cat="${cat}"]`);
         if(input) input.value = m.commonBudgets?.[cat] || "";
+      });
+      FIXED_COST_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-fixed-cost-cat="${cat}"]`);
+        if(input) input.value = m.fixedCosts?.[cat] || "";
       });
     }
 
@@ -625,20 +968,29 @@
       m.femaleSalary = Number(els.femaleSalary.value || 0);
       m.maleTransfer = Number(els.maleTransfer.value || 0);
       m.femaleTransfer = Number(els.femaleTransfer.value || 0);
-      m.isAutoCreated = false;
-      m.fixedCosts = m.fixedCosts || {};
-      FIXED_COST_CATEGORIES.forEach(cat => {
-        const input = document.querySelector(`[data-fixed-cost="${cat}"]`);
-        m.fixedCosts[cat] = Number(input?.value || 0);
-      });
       m.commonBudgets = m.commonBudgets || {};
       COMMON_BUDGET_CATEGORIES.forEach(cat => {
         const input = document.querySelector(`[data-budget-cat="${cat}"]`);
         m.commonBudgets[cat] = Number(input?.value || 0);
       });
+      m.fixedCosts = m.fixedCosts || {};
+      FIXED_COST_CATEGORIES.forEach(cat => {
+        const input = document.querySelector(`[data-fixed-cost-cat="${cat}"]`);
+        m.fixedCosts[cat] = Number(input?.value || 0);
+      });
+      m.isAutoCreated = false;
+      state.monthly[state.currentMonth] = normalizeMonthData(state.currentMonth, m, state.transactions);
       saveState();
+      loadMonthlyInputs();
       renderAll();
       alert("月初設定を保存しました");
+    }
+
+    function getPreviousMonthKey(month){
+      const [year, monthNum] = String(month || "").split("-").map(Number);
+      if(!year || !monthNum) return "";
+      const dt = new Date(year, monthNum - 2, 1);
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2,"0")}`;
     }
 
     function renderCategoryOptions(){
@@ -763,6 +1115,7 @@
     function getTransactionsForCurrentMonth(){
       return state.transactions
         .filter(t => t.month === state.currentMonth)
+        .map(t => ({...t, owner: normalizeOwner(t.owner)}))
         .sort((a,b) => b.date.localeCompare(a.date));
     }
 
@@ -787,6 +1140,16 @@
 
     function renderSummary(){
       const finance = getMonthlyFinance();
+      const commonShareMetrics = [
+        {
+          label: "Kの按分後残額（共通費60%反映）",
+          value: finance.ownerBalances.male
+        },
+        {
+          label: "Aの按分後残額（共通費40%反映）",
+          value: finance.ownerBalances.female
+        }
+      ];
 
       els.summaryArea.innerHTML = `
         <div class="metric">
@@ -795,24 +1158,22 @@
         </div>
         <div class="metric">
           <div class="label">Kの給料 - Kの支出合計</div>
-          <div class="value">${yen(finance.ownerRemain.male)}
+          <div class="value">${yen(finance.ownerRemain.male)}</div>
         </div>
         <div class="metric">
           <div class="label">Aの給料 - Aの支出合計</div>
-          <div class="value">${yen(finance.ownerRemain.female)}
+          <div class="value">${yen(finance.ownerRemain.female)}</div>
         </div>
         <div class="metric">
           <div class="label">共通支出合計</div>
           <div class="value">${yen(finance.commonExpense)}</div>
         </div>
-        <div class="metric">
-          <div class="label">Kの按分後残額（共通費60%反映）</div>
-          <div class="value">${yen(finance.ownerBalances.male)}
-        </div>
-        <div class="metric">
-          <div class="label">Aの按分後残額（共通費40%反映）</div>
-          <div class="value">${yen(finance.ownerBalances.female)}
-        </div>
+        ${commonShareMetrics.map(metric => `
+          <div class="metric">
+            <div class="label">${metric.label}</div>
+            <div class="value">${yen(metric.value)}</div>
+          </div>
+        `).join("")}
       `;
     }
 
@@ -873,11 +1234,13 @@
 
       els.chartArea.innerHTML = `
         <div class="grid-2">
-          <div>
-            <div style="font-weight:700;margin-bottom:10px;">共通 / K / A の比率</div>
-            ${barRow("共通", finance.commonExpense, total, "var(--common)")}
-            ${barRow("K", finance.ownerExpenses.male, total, "var(--male)")}
-            ${barRow("A", finance.ownerExpenses.female, total, "var(--female)")}
+          <div class="bar-box">
+            <div class="section-title">支出区分の比率</div>
+            <div class="bar-group">
+              ${barRow("共通", finance.commonExpense, total, "var(--common)")}
+              ${barRow("K", finance.ownerExpenses.male, total, "var(--male)")}
+              ${barRow("A", finance.ownerExpenses.female, total, "var(--female)")}
+            </div>
           </div>
           <div class="bar-box">
             <div class="section-title">カテゴリ別支出</div>
@@ -912,18 +1275,14 @@
     }
 
     function renderPieCharts(){
-      const list = getTransactionsForCurrentMonth();
-      const m = getMonthData(state.currentMonth);
-      const maleSpent = sum(list.filter(t => t.owner === "male").map(t => t.amount));
-      const femaleSpent = sum(list.filter(t => t.owner === "female").map(t => t.amount));
-      const commonSpent = sum(list.filter(t => t.owner === "common").map(t => t.amount));
-      const pies = [
-        {label:"K", income:Number(m.maleSalary || 0), expense:maleSpent, color:"var(--male)"},
-        {label:"A", income:Number(m.femaleSalary || 0), expense:femaleSpent, color:"var(--female)"},
-        {label:"共通", income:Number(m.maleTransfer || 0) + Number(m.femaleTransfer || 0), expense:commonSpent, color:"var(--common)"}
+      const finance = getMonthlyFinance();
+      const charts = [
+        buildOwnerPieData("male", finance),
+        buildOwnerPieData("female", finance),
+        buildCommonPieData(finance)
       ];
 
-      els.pieArea.innerHTML = pies.map(chart => {
+      els.pieArea.innerHTML = charts.map(chart => {
         const gradient = buildPieGradient(chart.segments);
         return `<div class="pie-card">
           <div class="pie-title">${chart.title}</div>
@@ -992,6 +1351,10 @@
         male: ownerIncomes.male - (ownerExpenses.male + ownerCommonShare.male),
         female: ownerIncomes.female - (ownerExpenses.female + ownerCommonShare.female)
       };
+      const ownerRemain = {
+        male: ownerIncomes.male - ownerExpenses.male,
+        female: ownerIncomes.female - ownerExpenses.female
+      };
       const commonIncome = Number(monthData.maleTransfer || 0) + Number(monthData.femaleTransfer || 0);
       const categoryTotals = {};
       list.forEach(t => {
@@ -1006,6 +1369,7 @@
         commonRemain: commonIncome - commonExpense,
         ownerExpenses,
         ownerIncomes,
+        ownerRemain,
         ownerCommonShare,
         ownerBalances,
         categoryTotals
@@ -1031,7 +1395,7 @@
       return {
         title: `${ownerLabel}の収支円グラフ`,
         summary: `収入 ${yen(income)} / 支出+共通負担 ${yen(spent)}`,
-        segments: createPieSegments(categoryMap, income, spent)
+        segments: createPieSegments(categoryMap, income, spent, owner)
       };
     }
 
@@ -1049,11 +1413,11 @@
       return {
         title: "共通費の円グラフ",
         summary: `共通資金 ${yen(finance.commonIncome)} / 共通支出 ${yen(finance.commonExpense)}`,
-        segments: createPieSegments(categoryMap, finance.commonIncome, finance.commonExpense)
+        segments: createPieSegments(categoryMap, finance.commonIncome, finance.commonExpense, "common")
       };
     }
 
-    function createPieSegments(categoryMap, baseValue, spentValue){
+    function createPieSegments(categoryMap, baseValue, spentValue, paletteKey){
       const safeMap = Object.entries(categoryMap).filter(([, value]) => Number(value || 0) > 0);
       if(!safeMap.length){
         return [{
@@ -1065,11 +1429,35 @@
         }];
       }
       const total = Math.max(sum(safeMap.map(([, value]) => value)), baseValue || 0, spentValue || 0, 1);
-      return safeMap.map(([label, value]) => ({
+      const specialLabels = new Set(["残額", "超過", "共通負担"]);
+      const sorted = [...safeMap].sort((a, b) => b[1] - a[1]);
+      const primary = [];
+      const secondary = [];
+
+      sorted.forEach(([label, value]) => {
+        const percent = (value / total) * 100;
+        const shouldKeep = specialLabels.has(label) || primary.length < 5 || percent >= 8;
+        if(shouldKeep){
+          primary.push([label, value]);
+        }else{
+          secondary.push([label, value]);
+        }
+      });
+
+      if(secondary.length){
+        primary.push([
+          "そのほか",
+          sum(secondary.map(([, value]) => value))
+        ]);
+      }
+
+      const palette = PIE_PALETTES[paletteKey] || FIXED_CHART_COLORS;
+      let paletteIndex = 0;
+      return primary.map(([label, value]) => ({
         label,
         value,
         displayValue: value,
-        color: getCategoryColor(label),
+        color: getPieSegmentColor(label, palette, paletteIndex++),
         percent: Math.round((value / total) * 100)
       }));
     }
@@ -1092,9 +1480,19 @@
       if(label === "残額") return "#2563eb";
       if(label === "超過") return "#ef4444";
       if(label === "共通負担") return "#8b5cf6";
+      if(label === "そのほか") return "#94a3b8";
+      if(CATEGORY_COLOR_MAP[label]) return CATEGORY_COLOR_MAP[label];
       let code = 0;
       for(let i = 0; i < label.length; i++) code += label.charCodeAt(i) * (i + 1);
       return FIXED_CHART_COLORS[code % FIXED_CHART_COLORS.length];
+    }
+
+    function getPieSegmentColor(label, palette, index){
+      if(label === "残額") return "#2563eb";
+      if(label === "超過") return "#ef4444";
+      if(label === "共通負担") return "#8b5cf6";
+      if(label === "そのほか") return "#94a3b8";
+      return palette[index % palette.length];
     }
 
     function exportCSV(){
@@ -1130,9 +1528,18 @@
     }
 
     function ownerTag(owner){
-      if(owner === "common") return '<span class="tag tag-common">共通</span>';
-      if(owner === "male") return '<span class="tag tag-male">K</span>';
+      const normalized = normalizeOwner(owner);
+      if(normalized === "common") return '<span class="tag tag-common">共通</span>';
+      if(normalized === "male") return '<span class="tag tag-male">K</span>';
       return '<span class="tag tag-female">A</span>';
+    }
+
+    function normalizeOwner(owner){
+      const value = String(owner || "").trim().toLowerCase();
+      if(value === "common" || value === "共通") return "common";
+      if(value === "male" || value === "k" || value === "男") return "male";
+      if(value === "female" || value === "a" || value === "女") return "female";
+      return owner === "common" || owner === "male" || owner === "female" ? owner : "common";
     }
 
     function yen(n){
