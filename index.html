@@ -150,6 +150,9 @@
     .tag-common{background:var(--common)}
     .tag-male{background:var(--male)}
     .tag-female{background:var(--female)}
+    .tag-recurring{background:var(--accent2);margin-left:6px}
+    .status-active{color:var(--accent2);font-weight:700}
+    .status-paused{color:var(--sub);font-weight:700}
     table{
       width:100%;
       border-collapse:collapse;
@@ -232,6 +235,7 @@
       <div class="actions">
         <button class="small btn-sub" id="themeBtn">🌙 ダークモード切替</button>
         <button class="small btn-sub" id="exportBtn">CSV書き出し</button>
+        <button class="small btn-sub" id="backupBtn">完全バックアップ</button>
         <button class="small btn-danger" id="resetBtn">全データ削除</button>
       </div>
     </div>
@@ -273,10 +277,77 @@
             <input type="number" id="femaleTransfer" placeholder="例 50000" />
           </div>
         </div>
-        <div id="fixedCostInputs" class="grid-4 section-space"></div>
+        <div class="section-space">
+          <div class="section-title">従来の固定費（月別データとして保持）</div>
+          <div id="fixedCostInputs" class="grid-4"></div>
+        </div>
         <div id="commonBudgetInputs" class="grid-3 section-space"></div>
         <div class="section-space">
           <button class="btn-primary" id="saveMonthlyBtn">月初設定を保存</button>
+        </div>
+      </div>
+
+      <div class="card" data-page="ledger">
+        <h2>サブスク・固定費管理</h2>
+        <div class="muted">一度登録すると、対象月の支出へ重複なしで反映します。マスターの変更は、すでに作成済みの月には影響しません。</div>
+        <div class="grid-4 section-space">
+          <div>
+            <label>項目名</label>
+            <input type="text" id="recurringName" placeholder="例 ChatGPT、車ローン" />
+          </div>
+          <div>
+            <label>金額</label>
+            <input type="number" id="recurringAmount" placeholder="例 3000" />
+          </div>
+          <div>
+            <label>支出区分</label>
+            <select id="recurringOwner">
+              <option value="common">共通</option>
+              <option value="male">K</option>
+              <option value="female">A</option>
+            </select>
+          </div>
+          <div>
+            <label>カテゴリ</label>
+            <select id="recurringCategory"></select>
+          </div>
+          <div>
+            <label>引き落とし日</label>
+            <input type="number" id="recurringDay" min="1" max="31" value="1" />
+          </div>
+          <div>
+            <label>適用開始月</label>
+            <input type="month" id="recurringStartMonth" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn-primary" id="saveRecurringBtn">固定費を登録</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn-sub" id="cancelRecurringBtn" style="display:none">編集をキャンセル</button>
+          </div>
+        </div>
+        <div class="actions section-space">
+          <button class="small btn-sub" id="applyRecurringBtn">表示月に固定費を反映</button>
+          <span class="muted" id="recurringMessage"></span>
+        </div>
+        <div class="section-space" style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>状態</th>
+                <th>項目</th>
+                <th>区分</th>
+                <th>カテゴリ</th>
+                <th>引落日</th>
+                <th>開始月</th>
+                <th class="right">金額</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="recurringTable"></tbody>
+          </table>
         </div>
       </div>
 
@@ -437,6 +508,8 @@
       female: { label: "A", color: "var(--female)", tagClass: "tag-female", share: 0.4, incomeKey: "femaleSalary" }
     };
     const STORAGE_KEY = "kakeibo_app_v1";
+    const RECURRING_DATA_VERSION = 2;
+    const RECURRING_BACKUP_KEY = `${STORAGE_KEY}_backup_before_recurring_v2`;
     const RECOVERED_STATE_SNAPSHOTS = [
       {
         currentMonth: "2026-03",
@@ -522,6 +595,7 @@
 
     const state = loadState();
     let editingId = null;
+    let editingRecurringId = null;
 
     const els = {
       monthPicker: document.getElementById("monthPicker"),
@@ -538,6 +612,17 @@
       category: document.getElementById("category"),
       memo: document.getElementById("memo"),
       saveTxBtn: document.getElementById("saveTxBtn"),
+      recurringName: document.getElementById("recurringName"),
+      recurringAmount: document.getElementById("recurringAmount"),
+      recurringOwner: document.getElementById("recurringOwner"),
+      recurringCategory: document.getElementById("recurringCategory"),
+      recurringDay: document.getElementById("recurringDay"),
+      recurringStartMonth: document.getElementById("recurringStartMonth"),
+      saveRecurringBtn: document.getElementById("saveRecurringBtn"),
+      cancelRecurringBtn: document.getElementById("cancelRecurringBtn"),
+      applyRecurringBtn: document.getElementById("applyRecurringBtn"),
+      recurringMessage: document.getElementById("recurringMessage"),
+      recurringTable: document.getElementById("recurringTable"),
       txTable: document.getElementById("txTable"),
       summaryArea: document.getElementById("summaryArea"),
       filterOwner: document.getElementById("filterOwner"),
@@ -552,6 +637,7 @@
       pieArea: document.getElementById("pieArea"),
       calendarArea: document.getElementById("calendarArea"),
       exportBtn: document.getElementById("exportBtn"),
+      backupBtn: document.getElementById("backupBtn"),
       resetBtn: document.getElementById("resetBtn"),
       themeBtn: document.getElementById("themeBtn"),
       editState: document.getElementById("editState"),
@@ -562,18 +648,20 @@
     init();
 
     function init(){
-      const now = new Date();
-      const month = state.currentMonth || now.toISOString().slice(0,7);
+      const month = state.currentMonth || getCurrentMonthKey();
       state.currentMonth = month;
       els.monthPicker.value = month;
-      els.date.value = new Date().toISOString().slice(0,10);
+      els.date.value = getTodayDateKey();
 
       applyTheme();
       renderCategoryOptions();
       renderFilterCategoryOptions();
+      renderRecurringCategoryOptions();
       renderFixedCostInputs();
       renderBudgetInputs();
       loadMonthlyInputs();
+      resetRecurringForm();
+      applyRecurringForCurrentCalendarMonth();
       renderAll();
       setPage(state.currentPage || "ledger");
 
@@ -581,6 +669,9 @@
         state.currentMonth = els.monthPicker.value;
         saveState();
         loadMonthlyInputs();
+        if(state.currentMonth === getCurrentMonthKey()){
+          applyRecurringForCurrentCalendarMonth();
+        }
         renderAll();
       });
 
@@ -596,7 +687,15 @@
         renderTransactions();
       });
       els.addCategoryBtn.addEventListener("click", addCategory);
+      els.saveRecurringBtn.addEventListener("click", saveRecurringItem);
+      els.cancelRecurringBtn.addEventListener("click", resetRecurringForm);
+      els.applyRecurringBtn.addEventListener("click", () => {
+        const added = ensureRecurringTransactions(state.currentMonth, true);
+        setRecurringMessage(added ? `${added}件を表示月へ反映しました` : "追加対象はありません");
+        renderAll();
+      });
       els.exportBtn.addEventListener("click", exportCSV);
+      els.backupBtn.addEventListener("click", exportJSONBackup);
       els.resetBtn.addEventListener("click", resetAll);
       els.themeBtn.addEventListener("click", toggleTheme);
       els.tabButtons.forEach(btn => {
@@ -610,15 +709,29 @@
         categories: [...DEFAULT_CATEGORIES],
         monthly: {},
         transactions: [],
+        recurringItems: [],
+        recurringSkips: {},
+        dataVersion: RECURRING_DATA_VERSION,
         theme: "light",
         currentPage: "ledger"
       };
       const candidates = [];
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
+        let parsed = null;
         try{
-          candidates.push(JSON.parse(raw));
+          parsed = JSON.parse(raw);
         }catch(e){}
+        if(parsed){
+          if(Number(parsed.dataVersion || 0) < RECURRING_DATA_VERSION){
+            try{
+              if(!localStorage.getItem(RECURRING_BACKUP_KEY)){
+                localStorage.setItem(RECURRING_BACKUP_KEY, raw);
+              }
+            }catch(e){}
+          }
+          candidates.push(parsed);
+        }
       }
       candidates.push(...collectLegacyStateCandidates());
       const normalized = candidates.length
@@ -634,6 +747,7 @@
       for(let i = 0; i < localStorage.length; i++){
         const key = localStorage.key(i);
         if(!key || key === STORAGE_KEY) continue;
+        if(key.startsWith(`${STORAGE_KEY}_backup_`)) continue;
         const lowerKey = key.toLowerCase();
         const raw = localStorage.getItem(key);
         if(!raw || !/^\s*[\[{]/.test(raw)) continue;
@@ -663,6 +777,9 @@
         categories: [],
         monthly: {},
         transactions: [],
+        recurringItems: [],
+        recurringSkips: {},
+        dataVersion: RECURRING_DATA_VERSION,
         theme: "light",
         currentPage: "ledger"
       });
@@ -681,6 +798,11 @@
         ...(Array.isArray(merged.transactions) ? merged.transactions : []),
         ...(Array.isArray(source.transactions) ? source.transactions : [])
       ];
+      merged.recurringItems = [
+        ...(Array.isArray(merged.recurringItems) ? merged.recurringItems : []),
+        ...(Array.isArray(source.recurringItems) ? source.recurringItems : [])
+      ];
+      merged.recurringSkips = mergeRecurringSkipMaps(merged.recurringSkips, source.recurringSkips);
       merged.monthly = {
         ...(merged.monthly && typeof merged.monthly === "object" ? merged.monthly : {}),
         ...(source.monthly && typeof source.monthly === "object" ? source.monthly : {}),
@@ -689,6 +811,7 @@
       if(!merged.currentMonth && source.currentMonth) merged.currentMonth = source.currentMonth;
       if(merged.theme !== "dark" && source.theme === "dark") merged.theme = "dark";
       if(merged.currentPage !== "analysis" && source.currentPage === "analysis") merged.currentPage = "analysis";
+      merged.dataVersion = Math.max(Number(merged.dataVersion || 0), Number(source.dataVersion || 0), RECURRING_DATA_VERSION);
       return merged;
     }
 
@@ -711,11 +834,55 @@
       normalized.transactions = Array.isArray(normalized.transactions)
         ? dedupeTransactions(normalized.transactions.map(normalizeTransaction).filter(Boolean))
         : [];
+      normalized.recurringItems = normalizeRecurringItems(normalized.recurringItems);
+      normalized.recurringSkips = normalizeRecurringSkips(normalized.recurringSkips);
       normalized.monthly = normalizeMonthlyMap(normalized.monthly, normalized.transactions);
+      normalized.dataVersion = RECURRING_DATA_VERSION;
       normalized.theme = normalized.theme === "dark" ? "dark" : "light";
       normalized.currentPage = normalized.currentPage === "analysis" ? "analysis" : "ledger";
       normalized.currentMonth = normalizeMonthKey(normalized.currentMonth);
       return normalized;
+    }
+
+    function normalizeRecurringItems(items){
+      const map = new Map();
+      (Array.isArray(items) ? items : []).forEach((item, index) => {
+        if(!item || typeof item !== "object") return;
+        const name = String(item.name || "").trim();
+        const amount = Number(item.amount || 0);
+        if(!name || amount <= 0) return;
+        const id = String(item.id || `legacy-recurring-${index}-${name}`);
+        map.set(id, {
+          ...item,
+          id,
+          name,
+          amount,
+          owner: normalizeOwner(item.owner),
+          category: String(item.category || "固定費").trim() || "固定費",
+          chargeDay: Math.min(31, Math.max(1, Math.trunc(Number(item.chargeDay || 1)))),
+          startMonth: normalizeMonthKey(item.startMonth) || getCurrentMonthKey(),
+          active: item.active !== false,
+          createdAt: String(item.createdAt || "")
+        });
+      });
+      return [...map.values()];
+    }
+
+    function mergeRecurringSkipMaps(left, right){
+      const merged = {};
+      [left, right].forEach(source => {
+        if(!source || typeof source !== "object") return;
+        Object.entries(source).forEach(([month, ids]) => {
+          const normalizedMonth = normalizeMonthKey(month);
+          if(!normalizedMonth || !Array.isArray(ids)) return;
+          merged[normalizedMonth] = [...new Set([...(merged[normalizedMonth] || []), ...ids.map(String)])];
+        });
+      });
+      return merged;
+    }
+
+    function normalizeRecurringSkips(source){
+      return mergeRecurringSkipMaps({}, source);
     }
 
     function dedupeTransactions(transactions){
@@ -876,7 +1043,9 @@
         amount: Number(tx.amount || 0),
         owner,
         category,
-        memo: typeof tx.memo === "string" ? tx.memo : ""
+        memo: typeof tx.memo === "string" ? tx.memo : "",
+        recurringId: tx.recurringId ? String(tx.recurringId) : "",
+        isRecurring: Boolean(tx.isRecurring || tx.recurringId)
       };
     }
 
@@ -993,6 +1162,200 @@
       return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2,"0")}`;
     }
 
+    function getCurrentMonthKey(){
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
+    }
+
+    function getTodayDateKey(){
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    }
+
+    function renderRecurringCategoryOptions(){
+      const current = els.recurringCategory.value;
+      els.recurringCategory.innerHTML = "";
+      state.categories.forEach(cat => {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        opt.textContent = cat;
+        els.recurringCategory.appendChild(opt);
+      });
+      const preferred = current && state.categories.includes(current)
+        ? current
+        : (state.categories.includes("固定費") ? "固定費" : (state.categories[0] || ""));
+      els.recurringCategory.value = preferred;
+    }
+
+    function resetRecurringForm(){
+      editingRecurringId = null;
+      els.recurringName.value = "";
+      els.recurringAmount.value = "";
+      els.recurringOwner.value = "common";
+      els.recurringDay.value = "1";
+      els.recurringStartMonth.value = state.currentMonth || getCurrentMonthKey();
+      renderRecurringCategoryOptions();
+      els.saveRecurringBtn.textContent = "固定費を登録";
+      els.cancelRecurringBtn.style.display = "none";
+    }
+
+    function saveRecurringItem(){
+      const name = String(els.recurringName.value || "").trim();
+      const amount = Number(els.recurringAmount.value || 0);
+      const owner = normalizeOwner(els.recurringOwner.value);
+      const category = String(els.recurringCategory.value || "").trim();
+      const chargeDay = Math.min(31, Math.max(1, Math.trunc(Number(els.recurringDay.value || 1))));
+      const startMonth = normalizeMonthKey(els.recurringStartMonth.value);
+
+      if(!name) return alert("項目名を入力してください");
+      if(!amount || amount <= 0) return alert("金額を正しく入力してください");
+      if(!category) return alert("カテゴリを選んでください");
+      if(!startMonth) return alert("適用開始月を選んでください");
+
+      const isNew = !editingRecurringId;
+      let item;
+      if(isNew){
+        item = {
+          id: crypto.randomUUID(),
+          name,
+          amount,
+          owner,
+          category,
+          chargeDay,
+          startMonth,
+          active: true,
+          createdAt: new Date().toISOString()
+        };
+        state.recurringItems.push(item);
+      }else{
+        const index = state.recurringItems.findIndex(entry => entry.id === editingRecurringId);
+        if(index < 0) return resetRecurringForm();
+        item = {
+          ...state.recurringItems[index],
+          name,
+          amount,
+          owner,
+          category,
+          chargeDay,
+          startMonth
+        };
+        state.recurringItems[index] = item;
+      }
+
+      let added = 0;
+      if(isNew && startMonth <= state.currentMonth){
+        added = createRecurringTransaction(item, state.currentMonth) ? 1 : 0;
+      }
+      saveState();
+      resetRecurringForm();
+      renderAll();
+      setRecurringMessage(isNew
+        ? `固定費を登録しました${added ? "。表示月にも反映済みです" : ""}`
+        : "固定費を更新しました。作成済みの月は変更していません");
+    }
+
+    function renderRecurringItems(){
+      const items = [...(state.recurringItems || [])].sort((a, b) => {
+        if(a.active !== b.active) return a.active ? -1 : 1;
+        return String(a.name).localeCompare(String(b.name), "ja");
+      });
+      els.recurringTable.innerHTML = items.map(item => `
+        <tr>
+          <td><span class="${item.active ? "status-active" : "status-paused"}">${item.active ? "有効" : "停止中"}</span></td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${ownerTag(item.owner)}</td>
+          <td>${escapeHtml(item.category)}</td>
+          <td>${item.chargeDay}日</td>
+          <td>${escapeHtml(item.startMonth)}</td>
+          <td class="right">${yen(item.amount)}</td>
+          <td>
+            <div class="actions">
+              <button class="small btn-sub" onclick="editRecurring('${escapeJs(item.id)}')">編集</button>
+              <button class="small ${item.active ? "btn-danger" : "btn-sub"}" onclick="toggleRecurring('${escapeJs(item.id)}')">${item.active ? "停止" : "再開"}</button>
+            </div>
+          </td>
+        </tr>
+      `).join("") || `<tr><td colspan="8" class="muted">登録されたサブスク・固定費はありません</td></tr>`;
+    }
+
+    window.editRecurring = function(id){
+      const item = state.recurringItems.find(entry => entry.id === id);
+      if(!item) return;
+      editingRecurringId = id;
+      els.recurringName.value = item.name;
+      els.recurringAmount.value = item.amount;
+      els.recurringOwner.value = item.owner;
+      renderRecurringCategoryOptions();
+      els.recurringCategory.value = item.category;
+      els.recurringDay.value = item.chargeDay;
+      els.recurringStartMonth.value = item.startMonth;
+      els.saveRecurringBtn.textContent = "固定費の編集を保存";
+      els.cancelRecurringBtn.style.display = "";
+      setRecurringMessage("固定費を編集中です");
+    }
+
+    window.toggleRecurring = function(id){
+      const item = state.recurringItems.find(entry => entry.id === id);
+      if(!item) return;
+      if(item.active && !confirm(`「${item.name}」を停止しますか？ 過去の支出は残ります。`)) return;
+      item.active = !item.active;
+      if(item.active){
+        ensureRecurringTransactions(getCurrentMonthKey(), false);
+      }
+      saveState();
+      renderAll();
+      setRecurringMessage(item.active ? `${item.name}を再開しました` : `${item.name}を停止しました`);
+    }
+
+    function applyRecurringForCurrentCalendarMonth(){
+      const added = ensureRecurringTransactions(getCurrentMonthKey(), false);
+      if(added) setRecurringMessage(`${added}件の固定費を今月へ自動反映しました`);
+    }
+
+    function ensureRecurringTransactions(month, force = false){
+      const normalizedMonth = normalizeMonthKey(month);
+      if(!normalizedMonth) return 0;
+      if(!force && normalizedMonth !== getCurrentMonthKey()) return 0;
+      let added = 0;
+      (state.recurringItems || []).forEach(item => {
+        if(createRecurringTransaction(item, normalizedMonth)) added++;
+      });
+      if(added) saveState();
+      return added;
+    }
+
+    function createRecurringTransaction(item, month){
+      if(!item?.active || item.startMonth > month) return false;
+      const skipped = state.recurringSkips?.[month] || [];
+      if(skipped.includes(item.id)) return false;
+      const exists = state.transactions.some(tx => tx.month === month && tx.recurringId === item.id);
+      if(exists) return false;
+      state.transactions.push({
+        id: crypto.randomUUID(),
+        date: getRecurringDate(month, item.chargeDay),
+        month,
+        amount: Number(item.amount || 0),
+        owner: normalizeOwner(item.owner),
+        category: item.category,
+        memo: item.name,
+        recurringId: item.id,
+        isRecurring: true,
+        generatedAt: new Date().toISOString()
+      });
+      return true;
+    }
+
+    function getRecurringDate(month, chargeDay){
+      const [year, monthNumber] = month.split("-").map(Number);
+      const lastDay = new Date(year, monthNumber, 0).getDate();
+      const day = Math.min(lastDay, Math.max(1, Math.trunc(Number(chargeDay || 1))));
+      return `${month}-${String(day).padStart(2,"0")}`;
+    }
+
+    function setRecurringMessage(message){
+      els.recurringMessage.textContent = message || "";
+    }
+
     function renderCategoryOptions(){
       els.category.innerHTML = "";
       state.categories.forEach(cat => {
@@ -1036,6 +1399,7 @@
       els.newCategory.value = "";
       renderCategoryOptions();
       renderFilterCategoryOptions();
+      renderRecurringCategoryOptions();
     }
 
     window.renameCategory = function(oldName){
@@ -1049,16 +1413,21 @@
       state.transactions.forEach(t => {
         if(t.category === oldName) t.category = name;
       });
+      state.recurringItems.forEach(item => {
+        if(item.category === oldName) item.category = name;
+      });
       saveState();
       renderCategoryOptions();
       renderFilterCategoryOptions();
+      renderRecurringCategoryOptions();
       renderAll();
     }
 
     window.deleteCategory = function(name){
-      const used = state.transactions.some(t => t.category === name);
+      const used = state.transactions.some(t => t.category === name)
+        || state.recurringItems.some(item => item.category === name);
       if(used){
-        alert("このカテゴリは使用中なので削除できません");
+        alert("このカテゴリは支出または固定費で使用中なので削除できません");
         return;
       }
       if(!confirm("カテゴリを削除しますか？")) return;
@@ -1066,6 +1435,7 @@
       saveState();
       renderCategoryOptions();
       renderFilterCategoryOptions();
+      renderRecurringCategoryOptions();
     }
 
     function saveTransaction(){
@@ -1079,7 +1449,9 @@
       if(!amount || amount <= 0) return alert("金額を正しく入力してください");
       if(!category) return alert("カテゴリを選んでください");
 
+      const existingTx = editingId ? state.transactions.find(t => t.id === editingId) : null;
       const tx = {
+        ...(existingTx || {}),
         id: editingId || crypto.randomUUID(),
         date,
         month: date.slice(0,7),
@@ -1088,6 +1460,12 @@
         category,
         memo
       };
+
+      if(existingTx?.recurringId && existingTx.month && existingTx.month !== tx.month){
+        state.recurringSkips[existingTx.month] = [
+          ...new Set([...(state.recurringSkips[existingTx.month] || []), existingTx.recurringId])
+        ];
+      }
 
       if(editingId){
         const idx = state.transactions.findIndex(t => t.id === editingId);
@@ -1109,7 +1487,7 @@
       els.memo.value = "";
       els.owner.value = "common";
       els.category.value = state.categories[0] || "";
-      els.date.value = new Date().toISOString().slice(0,10);
+      els.date.value = getTodayDateKey();
     }
 
     function getTransactionsForCurrentMonth(){
@@ -1126,6 +1504,7 @@
       renderBudgetAnalysis();
       renderPieCharts();
       renderCalendar();
+      renderRecurringItems();
     }
 
     function setPage(page){
@@ -1187,7 +1566,7 @@
         <tr>
           <td>${escapeHtml(t.date)}</td>
           <td>${ownerTag(t.owner)}</td>
-          <td>${escapeHtml(t.category)}</td>
+          <td>${escapeHtml(t.category)}${t.isRecurring ? '<span class="tag tag-recurring">自動</span>' : ''}</td>
           <td>${escapeHtml(t.memo || "")}</td>
           <td class="right">${yen(t.amount)}</td>
           <td>
@@ -1215,7 +1594,17 @@
     }
 
     window.deleteTx = function(id){
-      if(!confirm("この支出を削除しますか？")) return;
+      const target = state.transactions.find(t => t.id === id);
+      if(!target) return;
+      const message = target.recurringId
+        ? "この月の固定費を削除しますか？ この月には自動で再追加されません。"
+        : "この支出を削除しますか？";
+      if(!confirm(message)) return;
+      if(target.recurringId && target.month){
+        state.recurringSkips[target.month] = [
+          ...new Set([...(state.recurringSkips[target.month] || []), target.recurringId])
+        ];
+      }
       state.transactions = state.transactions.filter(t => t.id !== id);
       if(editingId === id){
         editingId = null;
@@ -1497,17 +1886,31 @@
 
     function exportCSV(){
       const rows = [
-        ["date","month","owner","category","memo","amount"],
-        ...state.transactions.map(t => [t.date,t.month,t.owner,t.category,t.memo || "",t.amount])
+        ["date","month","owner","category","memo","amount","is_recurring","recurring_id"],
+        ...state.transactions.map(t => [t.date,t.month,t.owner,t.category,t.memo || "",t.amount,t.isRecurring ? "true" : "false",t.recurringId || ""])
       ];
       const csv = rows.map(r => r.map(v => `"${String(v).replaceAll('"','""')}"`).join(",")).join("\\n");
       const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+      downloadBlob(blob, "kakeibo.csv");
+    }
+
+    function exportJSONBackup(){
+      saveState();
+      const json = JSON.stringify(state, null, 2);
+      const blob = new Blob([json], {type: "application/json;charset=utf-8;"});
+      downloadBlob(blob, `kakeibo-full-backup-${getTodayDateKey()}.json`);
+    }
+
+    function downloadBlob(blob, fileName){
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "kakeibo.csv";
+      a.download = fileName;
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function resetAll(){
